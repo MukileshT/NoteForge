@@ -1,0 +1,19 @@
+﻿symbols:
+  "!": extra_information
+  "âŠ—": important
+  "?": unclear
+  "â˜…": key_concept
+  "â†’": follows_from
+rendering:
+  extra_information:
+    prefix: "> ðŸ’¡ Extra Information"
+    style: "blockquote"
+  important:
+    prefix: "> âš ï¸ Important"
+    style: "blockquote"
+  unclear:
+    prefix: "> â“ Unclear"
+    style: "blockquote"
+  key_concept:
+    prefix: "> â­ Key Concept"
+    style: "blockquote"
