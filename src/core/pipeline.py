@@ -48,16 +48,19 @@ class ProcessingPipeline:
             if not page_images:
                 raise ValueError("No valid pages found")
             
+            # Process the first page to extract metadata
+            first_page_content = self._process_single_page(page_images[0], 1)
             update("Extracting metadata...", 0.15)
-            metadata = self.metadata_extractor.extract(page_images[0])
+            metadata = self.metadata_extractor.extract(first_page_content)
             session = NoteSession(subject=metadata['subject'], date=metadata['date'], 
                                 topics=metadata.get('topics', []))
-            
+            session.pages.append(first_page_content) # Add first page to session
+
             total = len(page_images)
-            for idx, page_img in enumerate(page_images):
-                pct = 0.20 + (0.50 * (idx / total))
-                update(f"Processing page {idx+1}/{total}...", pct)
-                page_content = self._process_single_page(page_img, idx+1)
+            for idx, page_img in enumerate(page_images[1:]): # Start from the second page
+                pct = 0.20 + (0.50 * ((idx + 1) / total))
+                update(f"Processing page {idx+2}/{total}...", pct)
+                page_content = self._process_single_page(page_img, idx+2)
                 session.pages.append(page_content)
             
             update("Matching labels...", 0.70)
