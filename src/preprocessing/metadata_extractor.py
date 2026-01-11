@@ -65,11 +65,35 @@ Return ONLY JSON:
             return {'subject': None, 'date': None, 'topics': []}
 
     def _filter_metadata_from_text_blocks(self, text_blocks: List[TextBlock], metadata: Dict):
-        subject_str = metadata['subject']
-        date_str = metadata['date'].strftime('%Y-%m-%d')
+        subject_str_lower = metadata['subject'].lower()
+        date_str_formatted = metadata['date'].strftime('%Y-%m-%d')
+        date_str_lower = date_str_formatted.lower()
         
-        # Remove text blocks that contain the subject code or date
-        # This is a simple filtering, can be made more robust if needed
-        text_blocks[:] = [block for block in text_blocks if 
-                         subject_str.lower() not in block.content.lower() and
-                         date_str not in block.content]
+        filtered_blocks = []
+        for block in text_blocks:
+            block_content_lower = block.content.strip().lower()
+            
+            is_subject_block = False
+            # Check for exact match of subject code
+            if block_content_lower == subject_str_lower:
+                is_subject_block = True
+            # Check if block starts with subject code (e.g., "EC301 - Some Text")
+            elif block_content_lower.startswith(subject_str_lower) and len(block_content_lower) > len(subject_str_lower) and not block_content_lower[len(subject_str_lower)].isalnum():
+                is_subject_block = True
+
+            is_date_block = False
+            # Check for exact match of date
+            if block_content_lower == date_str_lower:
+                is_date_block = True
+            # Check if block contains date as a distinct part (e.g., "1-1-2026 Some Text")
+            elif date_str_lower in block_content_lower: # Can be improved by checking word boundaries
+                 # Simple check: if date string is found within the block
+                 # More robust check might involve regex for word boundaries \bdate_str_lower\b
+                is_date_block = True
+            
+            if is_subject_block or is_date_block:
+                logger.info(f"Removing metadata block: '{block.content}' (Subject: {is_subject_block}, Date: {is_date_block})")
+            else:
+                filtered_blocks.append(block)
+        
+        text_blocks[:] = filtered_blocks

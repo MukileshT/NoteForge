@@ -6,9 +6,8 @@ from core.config_manager import ConfigManager
 from preprocessing.pdf_handler import PDFHandler
 from preprocessing.page_normalizer import PageNormalizer
 from preprocessing.metadata_extractor import MetadataExtractor
-from vision.ocr_engine import OCREngine
+from vision.vision_analyzer import VisionAnalyzer
 from vision.block_classifier import BlockClassifier
-from vision.diagram_detector import DiagramDetector
 from processing.label_matcher import LabelMatcher
 from processing.image_optimizer import ImageOptimizer
 from processing.text_cleaner import TextCleaner
@@ -25,9 +24,8 @@ class ProcessingPipeline:
         self.pdf_handler = PDFHandler()
         self.page_normalizer = PageNormalizer()
         self.metadata_extractor = MetadataExtractor(config)
-        self.ocr_engine = OCREngine(config)
+        self.vision_analyzer = VisionAnalyzer(config)
         self.block_classifier = BlockClassifier(config)
-        self.diagram_detector = DiagramDetector(config)
         self.label_matcher = LabelMatcher(config)
         self.image_optimizer = ImageOptimizer(config)
         self.text_cleaner = TextCleaner(config)
@@ -102,10 +100,16 @@ class ProcessingPipeline:
     
     def _process_single_page(self, page_image: Path, page_number: int) -> PageContent:
         page_content = PageContent(page_number=page_number, raw_image_path=page_image)
-        ocr_result = self.ocr_engine.process_page(page_image)
-        page_content.text_blocks = ocr_result['text_blocks']
-        diagrams = self.diagram_detector.detect(page_image)
-        page_content.diagram_regions = diagrams
-        classified = self.block_classifier.classify(page_image, ocr_result)
+        vision_result = self.vision_analyzer.analyze_page(page_image)
+        
+        page_content.text_blocks = vision_result['text_blocks']
+        page_content.diagram_regions = vision_result['diagram_regions']
+        
+        # block_classifier still needs 'ocr_result' format
+        ocr_result_for_classifier = {
+            'text_blocks': vision_result['text_blocks'],
+            'full_text': vision_result['full_text']
+        }
+        classified = self.block_classifier.classify(page_image, ocr_result_for_classifier)
         page_content.formula_blocks = classified.get('formulas', [])
         return page_content

@@ -60,10 +60,6 @@ class NoteSession:
     def markdown_filename(self) -> str:
         return f"{self.filename_base}.md"
     
-    @property
-    def assets_folder(self) -> str:
-        return self.filename_base
-    
     def add_warning(self, warning: str):
         self.warnings.append(warning)
     

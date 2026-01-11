@@ -60,7 +60,7 @@ class MarkdownComposer:
                 if block.label and block.image_path:
                     anchor = block.label.replace('.', '-')
                     caption = block.caption or self._format_caption(block.label)
-                    rel_path = f"assets/{block.image_path.parent.name}/{block.image_path.name}"
+                    rel_path = f"assets/{block.image_path.name}"
                     md += f'<a id="{anchor}"></a>\n'
                     md += f"![{caption}]({rel_path})\n\n"
 
