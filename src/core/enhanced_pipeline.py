@@ -1,6 +1,8 @@
 """Enhanced Processing Pipeline with All New Features"""
 from pathlib import Path
 from typing import List, Callable, Optional
+from datetime import datetime
+import re
 
 from core.note_session import NoteSession, PageContent
 from core.config_manager import ConfigManager
@@ -23,19 +25,22 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 class EnhancedProcessingPipeline:
-    """Enhanced processing pipeline with new features"""
+    """Enhanced processing pipeline with all new features"""
     
-    def __init__(self, config, provider_name: str, api_key: str, 
-                 model: str = None, ocr_mode=None):
-        from llm.provider_factory import ProviderFactory
-        from llm.provider_interface import LLMConfig
-        from ocr.ocr_manager import OCRManager, OCRMode
-        from vision.diagram_detector_cv import CVDiagramDetector
-        from preprocessing.rule_based_structure import RuleBasedStructurer
-        from core.quota_manager import QuotaManager
-        
+    def __init__(self, config: ConfigManager, provider_name: str, api_key: str, 
+                 model: str = None, ocr_mode: OCRMode = OCRMode.LOCAL):
         self.config = config
+        self.provider_name = provider_name
+        
+        # Initialize quota manager
         self.quota_manager = QuotaManager()
+        self.quota_manager.set_limits(
+            provider_name,
+            max_tokens_per_hour=config.get('max_tokens_per_hour', 100000),
+            max_tokens_per_day=config.get('max_tokens_per_day', 1000000),
+            max_requests_per_minute=config.get('max_requests_per_minute', 60),
+            max_vision_calls_per_hour=config.get('max_vision_calls_per_hour', 100)
+        )
         
         # Create LLM provider
         self.llm_provider = ProviderFactory.create(
@@ -55,30 +60,28 @@ class EnhancedProcessingPipeline:
             llm_provider=self.llm_provider if ocr_mode == OCRMode.AI else None
         )
         
-        # Initialize diagram detector
+        # Initialize diagram detector (OpenCV-based, no AI)
         self.diagram_detector = CVDiagramDetector()
         
-        # Initialize rule-based structurer
+        # Initialize rule-based structurer (zero tokens)
         self.rule_structurer = RuleBasedStructurer()
         
-        # Initialize quota manager
-        self.quota_manager = QuotaManager()
-        self.quota_manager.set_limits(
-            provider_name,
-            max_tokens_per_hour=config.get('max_tokens_per_hour', 100000),
-            max_tokens_per_day=config.get('max_tokens_per_day', 1000000),
-            max_requests_per_minute=config.get('max_requests_per_minute', 60),
-            max_vision_calls_per_hour=config.get('max_vision_calls_per_hour', 100)
-        )
+        # Initialize other components
+        self.pdf_handler = PDFHandler()
+        self.page_normalizer = PageNormalizer()
+        self.metadata_extractor = MetadataExtractor(config)
+        self.label_matcher = LabelMatcher(config)
+        self.image_optimizer = ImageOptimizer(config)
+        self.text_cleaner = TextCleaner(config)
+        self.markdown_composer = MarkdownComposer(config)
+        self.vault_writer = VaultWriter(config)
+        self.index_manager = IndexManager(config)
         
-        logger.info(f"Pipeline initialized with {provider_name} provider, {ocr_mode.value} OCR")
+        logger.info(f"Pipeline initialized: provider={provider_name}, OCR={ocr_mode.value}")
     
     def process(self, input_files: List[Path], vault_path: Path,
                 progress_callback: Callable = None) -> NoteSession:
-        """Process input files into Obsidian notes
-        
-        This is the main pipeline that orchestrates all processing steps.
-        """
+        """Process input files into Obsidian notes"""
         def update(msg: str, pct: float):
             logger.info(f"[{int(pct*100)}%] {msg}")
             if progress_callback:
@@ -105,8 +108,8 @@ class EnhancedProcessingPipeline:
             metadata = self._extract_metadata_rules(first_page_content)
             
             session = NoteSession(
-                subject=metadata['subject'],
-                date=metadata['date'],
+                subject=metadata['subject'] or "UNKNOWN",
+                date=metadata['date'] or datetime.now().date(),
                 topics=metadata.get('topics', [])
             )
             session.pages.append(first_page_content)
@@ -142,8 +145,9 @@ class EnhancedProcessingPipeline:
             
             # Log quota usage
             usage = self.quota_manager.get_usage(self.provider_name)
-            logger.info(f"API Usage - Tokens: {usage['tokens_day']}/{usage['limits']['max_tokens_day']}, "
-                       f"Vision calls: {usage['vision_calls_hour']}/{usage['limits']['max_vision_calls_hour']}")
+            if usage:
+                logger.info(f"API Usage - Tokens: {usage.get('tokens_day', 0)}/{usage.get('limits', {}).get('max_tokens_day', 0)}, "
+                          f"Vision calls: {usage.get('vision_calls_hour', 0)}/{usage.get('limits', {}).get('max_vision_calls_hour', 0)}")
             
             update("Complete!", 1.0)
             return session
@@ -153,6 +157,7 @@ class EnhancedProcessingPipeline:
             raise
     
     def _prepare_pages(self, input_files: List[Path]) -> List[Path]:
+        """Prepare and normalize pages"""
         all_pages = []
         for file_path in input_files:
             if file_path.suffix.lower() == '.pdf':
@@ -160,69 +165,153 @@ class EnhancedProcessingPipeline:
                 all_pages.extend(pages)
             else:
                 all_pages.append(file_path)
+        
         normalized = []
         for page in all_pages:
             normalized.append(self.page_normalizer.normalize(page))
         return normalized
     
     def _process_single_page(self, page_image: Path, page_number: int) -> PageContent:
-        """Process a single page with new architecture"""
+        """Process a single page with new architecture
+        
+        Steps:
+        1. Detect diagrams (OpenCV, no AI)
+        2. OCR text regions only (exclude diagrams)
+        3. Rule-based structuring (zero tokens)
+        4. Single LLM call for refinement (text-only, max 1 per page)
+        """
         page_content = PageContent(page_number=page_number, raw_image_path=page_image)
         
-        # Step 1: Detect diagrams (OpenCV)
-        diagram_regions = self.cv_diagram_detector.detect(page_image)
+        # Step 1: Detect diagrams FIRST (OpenCV-based, no AI)
+        logger.info(f"Detecting diagrams in page {page_number}")
+        diagram_regions = self.diagram_detector.detect(page_image)
         page_content.diagram_regions = diagram_regions
+        logger.info(f"Found {len(diagram_regions)} diagrams")
         
-        # Step 2: OCR (local or AI)
-        ocr_result = self.ocr_manager.extract_text(page_image)
+        # Step 2: OCR text regions (exclude diagrams)
+        # OCR manager will handle text extraction, excluding diagram regions
+        logger.info(f"Extracting text from page {page_number}")
+        ocr_result = self.ocr_manager.extract_text(page_image, is_handwritten=False)
         page_content.text_blocks = ocr_result['text_blocks']
         full_text = ocr_result['full_text']
         
-        # Track tokens if AI was used
+        # Track tokens if AI OCR was used
         if 'tokens_used' in ocr_result:
             self._track_token_usage('ocr', ocr_result['tokens_used'], is_vision=True)
         
-        # Step 3: Rule-based structuring (zero tokens)
+        # Step 3: Rule-based structuring (ZERO TOKENS)
+        logger.info(f"Applying rule-based structuring to page {page_number}")
         structured_text = self.rule_structurer.structure(full_text)
         
-        # Step 4: LLM refinement (single call, text-only)
+        # Step 4: Single LLM refinement call (text-only, max 1 per page)
+        refined_text = structured_text
         if self.llm_provider:
-            refined_text = self._llm_refine_text(structured_text)
-            # Update text blocks with refined content
-            # (simplified - in production, would update individual blocks)
-            full_text = refined_text
+            logger.info(f"Refining text with LLM for page {page_number}")
+            refined_text = self._llm_refine_text(structured_text, page_number)
+        
+        # Update text blocks with refined content
+        # For simplicity, update the first text block with refined text
+        # In production, would map refined text back to individual blocks
+        if page_content.text_blocks and refined_text != structured_text:
+            # Split refined text into lines and update blocks
+            refined_lines = refined_text.split('\n')
+            for i, block in enumerate(page_content.text_blocks[:len(refined_lines)]):
+                if i < len(refined_lines):
+                    block.content = refined_lines[i]
         
         # Store structured text
-        page_content.structured_text = structured_text
+        page_content.structured_text = refined_text
         
         return page_content
     
-    def _llm_refine_text(self, text: str) -> str:
-        """Single LLM call to refine structured text"""
+    def _llm_refine_text(self, text: str, page_number: int) -> str:
+        """Single LLM call to refine structured text (max 1 per page)
+        
+        This is the ONLY LLM call allowed per page (except AI OCR mode).
+        """
         # Check quota
         estimated_tokens = len(text.split()) * 2  # Rough estimate
         if not self.quota_manager.check_quota(self.provider_name, estimated_tokens):
-            logger.warning("Quota exceeded, skipping LLM refinement")
+            logger.warning(f"Quota exceeded for page {page_number}, skipping LLM refinement")
             return text
         
-        prompt = f"""Refine this text for Obsidian markdown. Fix OCR errors, improve formatting, normalize math notation.
+        prompt = f"""Refine this text for Obsidian markdown. Fix OCR errors, improve formatting, normalize math notation, create proper internal links.
 
 Text:
 {text}
 
-Return only the refined markdown text."""
+Return only the refined markdown text. Do not add explanations."""
         
         try:
             response = self.llm_provider.complete(prompt)
             self._track_token_usage('refine', response.tokens_used)
-            return response.content
+            logger.info(f"LLM refined text for page {page_number}: {response.tokens_used} tokens")
+            return response.content.strip()
         except Exception as e:
-            logger.error(f"LLM refinement failed: {e}")
+            logger.error(f"LLM refinement failed for page {page_number}: {e}")
             return text
+    
+    def _apply_rule_based_structuring(self, session: NoteSession):
+        """Apply rule-based structuring to all pages"""
+        for page in session.pages:
+            if hasattr(page, 'structured_text') and page.structured_text:
+                # Already structured in _process_single_page
+                continue
+            elif page.text_blocks:
+                # Structure text from blocks
+                full_text = '\n'.join(block.content for block in page.text_blocks)
+                page.structured_text = self.rule_structurer.structure(full_text)
+    
+    def _apply_llm_fixes(self, session: NoteSession):
+        """Apply final LLM fixes (if quota allows)"""
+        # This is optional - most work is done per-page
+        # Could add cross-page linking here if needed
+        pass
+    
+    def _extract_metadata_rules(self, page_content: PageContent) -> dict:
+        """Extract metadata using rule-based approach (no LLM)"""
+        # Get text from first page
+        full_text = ''
+        if page_content.text_blocks:
+            full_text = '\n'.join(block.content for block in page_content.text_blocks)
+        elif hasattr(page_content, 'structured_text'):
+            full_text = page_content.structured_text
+        
+        # Use rule-based structurer's metadata extraction
+        metadata = self.rule_structurer.extract_metadata(full_text)
+        
+        # Fallback to metadata extractor if needed
+        if not metadata.get('subject') or not metadata.get('date'):
+            try:
+                fallback_metadata = self.metadata_extractor.extract(page_content)
+                if not metadata.get('subject'):
+                    metadata['subject'] = fallback_metadata.get('subject')
+                if not metadata.get('date'):
+                    metadata['date'] = fallback_metadata.get('date')
+                if not metadata.get('topics'):
+                    metadata['topics'] = fallback_metadata.get('topics', [])
+            except:
+                pass
+        
+        # Parse date string to date object
+        if isinstance(metadata.get('date'), str):
+            date_str = metadata['date']
+            for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d.%m.%Y']:
+                try:
+                    metadata['date'] = datetime.strptime(date_str, fmt).date()
+                    break
+                except:
+                    continue
+            if isinstance(metadata.get('date'), str):
+                # Default to today
+                metadata['date'] = datetime.now().date()
+        
+        return metadata
     
     def _track_token_usage(self, operation: str, tokens: int, is_vision: bool = False):
         """Track and enforce quota"""
         self.quota_manager.record_usage(self.provider_name, tokens, is_vision)
         usage = self.quota_manager.get_usage(self.provider_name)
-        logger.info(f"{operation}: {tokens} tokens, "
-                   f"total={usage['tokens_hour']}/{usage['limits']['max_tokens_hour']}")
+        if usage:
+            logger.info(f"{operation}: {tokens} tokens, "
+                      f"total={usage.get('tokens_hour', 0)}/{usage.get('limits', {}).get('max_tokens_hour', 0)}")

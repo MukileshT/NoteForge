@@ -56,7 +56,7 @@ class GeminiProvider(LLMProvider):
         """Generate completion with image"""
         from PIL import Image
         img = Image.open(image_path)
-        response = self.model.generate_content(
+        response = self.client.generate_content(
             contents=[system_prompt or "", prompt, img] if system_prompt else [prompt, img]
         )
         tokens = response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else 0

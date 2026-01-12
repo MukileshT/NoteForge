@@ -57,9 +57,13 @@ class MarkdownComposer:
                     md += f"{content}\n\n"
             
             elif isinstance(block, DiagramRegion):
-                if block.label and block.image_path:
-                    anchor = block.label.replace('.', '-')
-                    caption = block.caption or self._format_caption(block.label)
+                if block.image_path:
+                    # Use label if available, otherwise generate from image path
+                    label = block.label or block.image_path.stem.replace('fig', 'fig').replace('_', '.')
+                    anchor = label.replace('.', '-')
+                    caption = block.caption or self._format_caption(label)
+                    
+                    # Get relative path from vault root
                     rel_path = f"assets/{block.image_path.name}"
                     md += f'<a id="{anchor}"></a>\n'
                     md += f"![{caption}]({rel_path})\n\n"
