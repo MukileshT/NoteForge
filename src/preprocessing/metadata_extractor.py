@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from typing import Dict, Optional, List
 from vision.ai_client import AIClient
 from utils.validators import validate_subject_code, parse_date

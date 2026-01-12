@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from typing import Dict, List
 from core.note_session import TextBlock
 from vision.ai_client import AIClient

@@ -1,4 +1,4 @@
-﻿import re
+import re
 from core.note_session import NoteSession
 
 class CrossReferenceLinker:

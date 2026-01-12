@@ -1,6 +1,14 @@
-﻿import yaml
 from pathlib import Path
 from typing import Any, Dict
+
+try:
+    import yaml
+except ImportError:
+    raise ImportError(
+        "PyYAML is required but not installed. "
+        "Install with: pip install pyyaml"
+    ) from None
+
 from utils.logger import get_logger
 
 logger = get_logger(__name__)

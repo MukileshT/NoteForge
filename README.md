@@ -1,4 +1,4 @@
-﻿# Obsidian Notes Converter
+# Obsidian Notes Converter
 
 Convert handwritten notes (PDF/images) to Obsidian Markdown.
 

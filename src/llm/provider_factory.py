@@ -19,7 +19,7 @@ PROVIDER_MAP = {
 }
 
 DEFAULT_MODELS = {
-    'gemini': 'gemini-2.0-flash-exp',
+    'gemini': 'gemini-2.5-flash',
     'openrouter': 'anthropic/claude-3.5-sonnet',
     'groq': 'llama-3.3-70b-versatile',
     'ollama': 'llama3.2',

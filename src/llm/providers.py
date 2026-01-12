@@ -4,21 +4,102 @@ import json
 import re
 from pathlib import Path
 from typing import Optional
-from PIL import Image
+from datetime import datetime
+
+# #region agent log
+try:
+    with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+        f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_before_pil", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:10", "message": "Before importing PIL", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "G"}) + "\n")
+except: pass
+# #endregion
+
+try:
+    from PIL import Image
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_pil_success", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:14", "message": "Successfully imported PIL", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "G"}) + "\n")
+    except: pass
+    # #endregion
+except ImportError as e:
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_pil_error", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:18", "message": "ImportError: PIL missing", "data": {"error_type": type(e).__name__, "error_msg": str(e)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "G"}) + "\n")
+    except: pass
+    # #endregion
+    Image = None
+
+# #region agent log
+try:
+    with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+        f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_before_genai", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:22", "message": "Before importing google.generativeai", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+except: pass
+# #endregion
 
 try:
     from google import generativeai as genai
-except ImportError:
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_genai_success", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:26", "message": "Successfully imported google.generativeai", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+    except: pass
+    # #endregion
+except ImportError as e:
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_genai_error", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:30", "message": "ImportError: google.generativeai missing", "data": {"error_type": type(e).__name__, "error_msg": str(e)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
+    except: pass
+    # #endregion
     genai = None
+
+# #region agent log
+try:
+    with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+        f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_before_openai", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:34", "message": "Before importing openai", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "C"}) + "\n")
+except: pass
+# #endregion
 
 try:
     from openai import OpenAI
-except ImportError:
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_openai_success", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:38", "message": "Successfully imported openai", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "C"}) + "\n")
+    except: pass
+    # #endregion
+except ImportError as e:
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_openai_error", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:42", "message": "ImportError: openai missing", "data": {"error_type": type(e).__name__, "error_msg": str(e)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "C"}) + "\n")
+    except: pass
+    # #endregion
     OpenAI = None
+
+# #region agent log
+try:
+    with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+        f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_before_groq", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:46", "message": "Before importing groq", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "D"}) + "\n")
+except: pass
+# #endregion
 
 try:
     from groq import Groq
-except ImportError:
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_groq_success", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:50", "message": "Successfully imported groq", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "D"}) + "\n")
+    except: pass
+    # #endregion
+except ImportError as e:
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_providers_groq_error", "timestamp": int(datetime.now().timestamp() * 1000), "location": "providers.py:54", "message": "ImportError: groq missing", "data": {"error_type": type(e).__name__, "error_msg": str(e)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "D"}) + "\n")
+    except: pass
+    # #endregion
     Groq = None
 
 try:

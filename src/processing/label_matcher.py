@@ -1,4 +1,4 @@
-﻿from typing import Dict
+from typing import Dict
 import re
 from core.note_session import NoteSession, DiagramRegion
 from utils.validators import extract_label_info

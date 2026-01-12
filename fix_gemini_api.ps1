@@ -28,7 +28,7 @@ class AIClient:
             self.model = config.get('openai_model')
         elif self.provider == 'gemini':
             self.client = genai.Client(api_key=api_key)
-            self.model_name = config.get('gemini_model', 'gemini-2.0-flash-exp')
+            self.model_name = config.get('gemini_model', 'gemini-2.5-flash')
         else:
             raise ValueError(f"Unknown provider: {self.provider}")
     

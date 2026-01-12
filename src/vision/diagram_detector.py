@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from typing import List
 from core.note_session import DiagramRegion
 from vision.ai_client import AIClient

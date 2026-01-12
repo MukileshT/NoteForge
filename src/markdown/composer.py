@@ -1,4 +1,4 @@
-﻿from core.note_session import NoteSession, TextBlock, DiagramRegion, FormulaBlock
+from core.note_session import NoteSession, TextBlock, DiagramRegion, FormulaBlock
 from utils.logger import get_logger
 import yaml
 import re

@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from typing import Dict, List
 import re
 from core.note_session import FormulaBlock
@@ -21,7 +21,7 @@ class BlockClassifier:
     
     def _detect_formulas(self, text_blocks: List) -> List[FormulaBlock]:
         formulas = []
-        patterns = [r'[âˆ«âˆ‘âˆâˆšâˆ‚âˆ‡]', r'\d+[\+\-\*/]\d+', r'[a-z]\s*=\s*', r'\^']
+        patterns = [r'[∫∑∏√∂∇]', r'\d+[\+\-\*/]\d+', r'[a-z]\s*=\s*', r'\^']
         for block in text_blocks:
             for pattern in patterns:
                 if re.search(pattern, block.content):

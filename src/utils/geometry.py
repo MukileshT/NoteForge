@@ -1,4 +1,4 @@
-﻿import math
+import math
 from typing import Tuple, List
 
 class BoundingBox:

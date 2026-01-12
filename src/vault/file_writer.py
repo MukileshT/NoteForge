@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from core.note_session import NoteSession
 from utils.logger import get_logger
 

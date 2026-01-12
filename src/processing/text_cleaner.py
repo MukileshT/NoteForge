@@ -1,4 +1,4 @@
-﻿import json
+import json
 from core.note_session import NoteSession
 from vision.ai_client import AIClient
 from utils.logger import get_logger

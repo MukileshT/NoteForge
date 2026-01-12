@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from typing import List, Callable
 
 from core.note_session import NoteSession, PageContent

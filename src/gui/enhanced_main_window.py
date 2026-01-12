@@ -158,7 +158,7 @@ class EnhancedMainWindow:
         
         # Default models per provider
         models = {
-            'gemini': ['gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+            'gemini': ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
             'openrouter': ['anthropic/claude-3.5-sonnet', 'openai/gpt-4-turbo', 'google/gemini-pro'],
             'groq': ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'mixtral-8x7b-32768'],
             'ollama': ['llama3.2', 'llama3.1', 'mistral', 'llava'],

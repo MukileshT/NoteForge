@@ -1,10 +1,60 @@
 """Local OCR Engine Implementations"""
-import cv2
-import numpy as np
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from abc import ABC, abstractmethod
-import pytesseract
+from datetime import datetime
+import json
+
+# #region agent log
+try:
+    with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+        f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_before_cv2", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:10", "message": "Before importing cv2", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "E"}) + "\n")
+except: pass
+# #endregion
+
+try:
+    import cv2
+    import numpy as np
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_cv2_success", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:15", "message": "Successfully imported cv2 and numpy", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "E"}) + "\n")
+    except: pass
+    # #endregion
+except ImportError as e:
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_cv2_error", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:19", "message": "ImportError: cv2/numpy missing", "data": {"error_type": type(e).__name__, "error_msg": str(e)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "E"}) + "\n")
+    except: pass
+    # #endregion
+    cv2 = None
+    np = None
+
+# #region agent log
+try:
+    with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+        f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_before_tesseract", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:25", "message": "Before importing pytesseract", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "F"}) + "\n")
+except: pass
+# #endregion
+
+try:
+    import pytesseract
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_tesseract_success", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:29", "message": "Successfully imported pytesseract", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "F"}) + "\n")
+    except: pass
+    # #endregion
+except ImportError as e:
+    # #region agent log
+    try:
+        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_tesseract_error", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:33", "message": "ImportError: pytesseract missing", "data": {"error_type": type(e).__name__, "error_msg": str(e)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "F"}) + "\n")
+    except: pass
+    # #endregion
+    pytesseract = None
+
 from core.note_session import TextBlock
 from ocr.preprocessing import ImagePreprocessor
 from utils.logger import get_logger

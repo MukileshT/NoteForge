@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from typing import List
 from pdf2image import convert_from_path
 from utils.logger import get_logger

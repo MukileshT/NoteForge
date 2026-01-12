@@ -1,4 +1,4 @@
-﻿import re
+import re
 from datetime import datetime
 from typing import Optional, List
 from dateutil import parser as date_parser
