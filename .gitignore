@@ -12,3 +12,6 @@ test_output/
 .DS_Store
 Thumbs.db
 #config.yaml
+.api_keys.enc
+.master.key
+.quota_usage.json

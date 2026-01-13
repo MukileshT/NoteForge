@@ -125,18 +125,18 @@ class EnhancedMainWindow:
     def _load_settings(self):
         """Load saved settings"""
         # Load OCR mode
-        ocr_strategy = self.config.get('ocr_strategy', 'local')
+        ocr_strategy = self.config.get('ocr.mode', 'local')
         self.selected_ocr_mode.set(ocr_strategy)
-        
-        # Load provider
-        provider = self.config.get('ai_provider', 'gemini')
-        self.selected_provider.set(provider)
-        
-        # Load model
-        model_key = f"{provider}_model"
-        model = self.config.get(model_key)
-        if model:
-            self.selected_model.set(model)
+
+        # Load provider from config if present
+        selected_model = self.config.get('models.selected', '')
+        if selected_model:
+            # Find provider for selected model
+            for m in self.config.list_models():
+                if m.get('name') == selected_model:
+                    self.selected_provider.set(m.get('provider', self.selected_provider.get()))
+                    self.selected_model.set(selected_model)
+                    break
     
     def _on_ocr_mode_changed(self):
         """Handle OCR mode change"""
@@ -155,26 +155,62 @@ class EnhancedMainWindow:
     def _update_model_list(self):
         """Update model list for selected provider"""
         provider = self.selected_provider.get()
-        
-        # Default models per provider
-        models = {
-            'gemini': ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-            'openrouter': ['anthropic/claude-3.5-sonnet', 'openai/gpt-4-turbo', 'google/gemini-pro'],
-            'groq': ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'mixtral-8x7b-32768'],
-            'ollama': ['llama3.2', 'llama3.1', 'mistral', 'llava'],
-            'huggingface': ['meta-llama/Llama-3.2-3B-Instruct', 'mistralai/Mistral-7B-Instruct-v0.2'],
-            'mistral': ['mistral-large-latest', 'pixtral-large-latest', 'mistral-medium-latest']
-        }
-        
-        self.provider_models[provider] = models.get(provider, [])
+
+        # Build list from central config.models.available
+        available = [m for m in self.config.list_models() if m.get('provider') == provider]
+        names = [m.get('name') for m in available]
+
+        # Add 'Other / Custom' option
+        names.append('Other / Custom')
+
+        self.provider_models[provider] = names
         self.model_combo['values'] = self.provider_models[provider]
-        
-        # Set default model
-        default = ProviderFactory.get_default_model(provider)
-        if default and default in self.provider_models[provider]:
-            self.selected_model.set(default)
-        elif self.provider_models[provider]:
-            self.selected_model.set(self.provider_models[provider][0])
+
+        # If selected_model exists and matches provider, keep it
+        cur_sel = self.selected_model.get()
+        if cur_sel and cur_sel in names:
+            return
+
+        # Otherwise choose selected model from config if matches, else first available
+        cfg_selected = self.config.get('models.selected', '')
+        if cfg_selected and cfg_selected in names:
+            self.selected_model.set(cfg_selected)
+        elif names and names[0] != 'Other / Custom':
+            self.selected_model.set(names[0])
+        else:
+            self.selected_model.set('')
+
+        # Bind selection event for custom option
+        def on_model_changed(event=None):
+            val = self.selected_model.get()
+            if val == 'Other / Custom':
+                self._prompt_add_custom_model()
+
+        self.model_combo.bind('<<ComboboxSelected>>', on_model_changed)
+
+    def _prompt_add_custom_model(self):
+        import tkinter.simpledialog as sd
+
+        dlg = sd.Dialog(self.root, title='Add Custom Model')
+        # Use simple dialogs for each field
+        name = sd.askstring('Model Name', 'Enter model name (e.g. my-model-v1):', parent=self.root)
+        if not name:
+            return
+        provider = sd.askstring('Provider', 'Enter provider name (free text):', parent=self.root)
+        if not provider:
+            provider = 'custom'
+        mtype = sd.askstring('Type', 'Enter type (api/local):', parent=self.root)
+        if mtype not in ('api', 'local'):
+            mtype = 'api'
+
+        # Append to central config and set selected
+        try:
+            self.config.add_model(name=name, provider=provider, mtype=mtype)
+            self.selected_provider.set(provider)
+            self.selected_model.set(name)
+            self._update_model_list()
+        except Exception as e:
+            messagebox.showerror('Error', f'Failed to add model: {e}')
     
     def _update_key_status(self):
         """Update API key status display"""

@@ -1,0 +1,32 @@
+{
+  "ocr": {
+    "mode": "local",
+    "confidence_threshold": 0.6
+  },
+  "models": {
+    "selected": "gemini-1.5-pro",
+    "available": [
+      {
+        "name": "gemini-1.5-pro",
+        "type": "api",
+        "provider": "google"
+      },
+      {
+        "name": "gpt-4o-mini",
+        "type": "api",
+        "provider": "openai"
+      }
+    ]
+  },
+  "image": {
+    "max_width": 1200,
+    "quality": 70
+  },
+  "security": {
+    "keys_path": ""
+  },
+  "vault": {
+    "notes_folder": "Notes",
+    "assets_folder": "assets"
+  }
+}

@@ -8,9 +8,9 @@ logger = get_logger(__name__)
 class ImageOptimizer:
     def __init__(self, config):
         self.config = config
-        self.max_w = config.get('image_optimization.max_diagram_width', 1200)
-        self.max_h = config.get('image_optimization.max_diagram_height', 1200)
-        self.quality = config.get('image_optimization.diagram_quality', 85)
+        # Use central config keys `image.max_width` and `image.quality`
+        self.max_w = int(self.config.get('image.max_width', 1200))
+        self.quality = int(self.config.get('image.quality', 70))
     
     def optimize_session_images(self, session: NoteSession, vault_path: Path):
         assets_dir = vault_path / self.config.get('vault.assets_folder', 'assets')
@@ -33,10 +33,10 @@ class ImageOptimizer:
                 
                 # Crop and save diagram
                 optimized = self._optimize_diagram(
-                    page.raw_image_path, 
-                    diagram.bbox, 
-                    assets_dir, 
-                    diagram.label, 
+                    page.raw_image_path,
+                    diagram.bbox,
+                    assets_dir,
+                    diagram.label,
                     session.filename_base
                 )
                 diagram.image_path = optimized
@@ -53,15 +53,33 @@ class ImageOptimizer:
         x2 = int((bbox['x'] + bbox['width']) * w)
         y2 = int((bbox['y'] + bbox['height']) * h)
         cropped = img.crop((x1, y1, x2, y2))
-        if cropped.width > self.max_w or cropped.height > self.max_h:
-            cropped.thumbnail((self.max_w, self.max_h), Image.LANCZOS)
-        
-        # Filename format: figX_Y.png (where X.Y is the label)
-        # Replace dots with underscores for filename
+
+        # Ensure we never store raw camera-resolution images: resize to max width
+        if cropped.width > self.max_w:
+            ratio = self.max_w / float(cropped.width)
+            new_h = int(cropped.height * ratio)
+            cropped = cropped.resize((self.max_w, new_h), Image.LANCZOS)
+
+        # Strip metadata by creating a new image without info
+        data = list(cropped.getdata())
+        clean = Image.new(cropped.mode, cropped.size)
+        clean.putdata(data)
+
+        # Choose PNG for diagrams to preserve clarity but ensure optimization
         safe_label = label.replace('.', '_')
         filename = f"fig{safe_label}.png"
         output_path = output_dir / filename
-        cropped.save(output_path, "PNG", optimize=True, quality=self.quality)
+
+        try:
+            # Save without metadata and with optimization
+            clean.save(output_path, format='PNG', optimize=True)
+        except Exception:
+            # Fallback to JPEG with quality settings if PNG save fails
+            jpg_name = f"fig{safe_label}.jpg"
+            output_path = output_dir / jpg_name
+            rgb = clean.convert('RGB')
+            rgb.save(output_path, format='JPEG', quality=self.quality, optimize=True)
+
         logger.info(f"Saved diagram {label} to {output_path.name}")
         return output_path
     
