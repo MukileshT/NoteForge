@@ -9,7 +9,12 @@
       {
         "name": "gemini-1.5-pro",
         "type": "api",
-        "provider": "google"
+        "provider": "gemini"
+      },
+      {
+        "name": "gemini-2.5-flash",
+        "type": "api",
+        "provider": "gemini"
       },
       {
         "name": "gpt-4o-mini",

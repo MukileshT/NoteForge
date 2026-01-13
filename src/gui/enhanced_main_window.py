@@ -93,9 +93,27 @@ class EnhancedMainWindow:
         provider_combo.bind("<<ComboboxSelected>>", self._on_provider_changed)
         
         tk.Label(provider_frame, text="Model:").grid(row=0, column=2, padx=5, sticky="w")
+        # Allow typing model names directly
         self.model_combo = ttk.Combobox(provider_frame, textvariable=self.selected_model,
-                                        state="readonly", width=25)
+                        state="normal", width=25)
         self.model_combo.grid(row=0, column=3, padx=5)
+        
+        # Inline custom model fields (hidden by default)
+        self.custom_model_frame = tk.Frame(provider_frame)
+        tk.Label(self.custom_model_frame, text="Custom model name:").grid(row=0, column=0, padx=5, sticky="w")
+        self.custom_model_entry = tk.Entry(self.custom_model_frame, width=30)
+        self.custom_model_entry.grid(row=0, column=1, padx=5)
+        tk.Label(self.custom_model_frame, text="Type:").grid(row=0, column=2, padx=5, sticky="w")
+        self.custom_model_type = ttk.Combobox(self.custom_model_frame, values=['api', 'local'], width=8, state='readonly')
+        self.custom_model_type.grid(row=0, column=3, padx=5)
+        self.custom_model_type.set('api')
+        # Save/Cancel buttons
+        self._save_custom_btn = tk.Button(self.custom_model_frame, text="Save Custom", command=self._save_custom_model, bg="green", fg="white")
+        self._save_custom_btn.grid(row=1, column=1, pady=5, sticky="w")
+        self._cancel_custom_btn = tk.Button(self.custom_model_frame, text="Cancel", command=self._hide_custom_model_fields)
+        self._cancel_custom_btn.grid(row=1, column=2, pady=5, sticky="w")
+        self.custom_model_frame.grid(row=1, column=0, columnspan=4, pady=5, sticky="w")
+        self.custom_model_frame.grid_remove()
         
         # API Key Management
         key_frame = tk.LabelFrame(self.root, text="API Key Management", padx=10, pady=10)
@@ -184,33 +202,70 @@ class EnhancedMainWindow:
         def on_model_changed(event=None):
             val = self.selected_model.get()
             if val == 'Other / Custom':
-                self._prompt_add_custom_model()
+                # Show inline fields instead of separate dialogs
+                self._show_custom_model_fields()
 
         self.model_combo.bind('<<ComboboxSelected>>', on_model_changed)
+        # Handle typed model names (Enter or focus out)
+        self.model_combo.bind('<Return>', self._on_model_typed)
+        self.model_combo.bind('<FocusOut>', self._on_model_focus_out)
+
 
     def _prompt_add_custom_model(self):
-        import tkinter.simpledialog as sd
+        # Kept for backward compatibility but no longer used.
+        return
 
-        dlg = sd.Dialog(self.root, title='Add Custom Model')
-        # Use simple dialogs for each field
-        name = sd.askstring('Model Name', 'Enter model name (e.g. my-model-v1):', parent=self.root)
+    def _show_custom_model_fields(self):
+        # Show inline fields and focus entry
+        self.custom_model_entry.delete(0, tk.END)
+        self.custom_model_frame.grid()
+        self.custom_model_entry.focus_set()
+
+    def _hide_custom_model_fields(self):
+        self.custom_model_frame.grid_remove()
+
+    def _save_custom_model(self):
+        name = self.custom_model_entry.get().strip()
         if not name:
+            messagebox.showerror('Error', 'Custom model name cannot be empty')
             return
-        provider = sd.askstring('Provider', 'Enter provider name (free text):', parent=self.root)
-        if not provider:
-            provider = 'custom'
-        mtype = sd.askstring('Type', 'Enter type (api/local):', parent=self.root)
-        if mtype not in ('api', 'local'):
-            mtype = 'api'
-
-        # Append to central config and set selected
+        provider = self.selected_provider.get() or 'custom'
+        mtype = self.custom_model_type.get() or 'api'
         try:
             self.config.add_model(name=name, provider=provider, mtype=mtype)
-            self.selected_provider.set(provider)
             self.selected_model.set(name)
+            self._hide_custom_model_fields()
             self._update_model_list()
         except Exception as e:
             messagebox.showerror('Error', f'Failed to add model: {e}')
+
+    def _on_model_typed(self, event=None):
+        # Handle when user types a model name and presses Enter
+        val = self.selected_model.get().strip()
+        if not val:
+            return
+        provider = self.selected_provider.get()
+        names = self.provider_models.get(provider, [])
+        if val in names:
+            # existing model, nothing to do
+            return
+        if val == 'Other / Custom':
+            self._show_custom_model_fields()
+            return
+        # Treat typed model as custom: add and select
+        try:
+            self.config.add_model(name=val, provider=provider, mtype='api')
+            self.selected_model.set(val)
+            self._update_model_list()
+        except Exception as e:
+            messagebox.showerror('Error', f'Failed to add typed model: {e}')
+
+    def _on_model_focus_out(self, event=None):
+        # Same behavior as pressing Enter
+        try:
+            self._on_model_typed()
+        except Exception:
+            pass
     
     def _update_key_status(self):
         """Update API key status display"""

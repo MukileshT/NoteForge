@@ -8,9 +8,10 @@ from core.note_session import PageContent, TextBlock
 logger = get_logger(__name__)
 
 class MetadataExtractor:
-    def __init__(self, config):
+    def __init__(self, config, provider: str = None, model: str = None, api_key: str = None):
         self.config = config
-        self.ai_client = AIClient(config)
+        # Pass provider/model/api_key to AIClient to use new config format
+        self.ai_client = AIClient(config, provider=provider, model=model, api_key=api_key)
         self.subject_pattern = config.get('subject_code_pattern')
         self.date_formats = config.get('date_formats')
     

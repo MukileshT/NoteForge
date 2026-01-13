@@ -117,36 +117,48 @@ class OCRManager:
         """Retry OCR on cropped text regions"""
         import cv2
         import tempfile
+        import time
         
-        # Detect text regions
-        img = cv2.imread(str(image_path))
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # Create unique temp directory for this page to avoid collisions
+        temp_dir = Path(tempfile.mkdtemp(prefix='ocr_page_'))
         
-        # Use MSER to detect text regions
-        mser = cv2.MSER_create()
-        regions, _ = mser.detectRegions(gray)
-        
-        all_blocks = []
-        full_text_parts = []
-        
-        h, w = img.shape[:2]
-        
-        for region in regions:
-            # Get bounding box
-            x, y, rw, rh = cv2.boundingRect(region.reshape(-1, 1, 2))
+        try:
+            # Detect text regions
+            img = cv2.imread(str(image_path))
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             
-            # Skip tiny regions
-            if rw < 20 or rh < 10:
-                continue
+            # Use MSER to detect text regions
+            mser = cv2.MSER_create()
+            regions, _ = mser.detectRegions(gray)
             
-            # Crop and OCR
-            crop = img[y:y+rh, x:x+rw]
+            all_blocks = []
+            full_text_parts = []
             
-            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
-                cv2.imwrite(tmp.name, crop)
-                tmp_path = Path(tmp.name)
+            h, w = img.shape[:2]
+            
+            for idx, region in enumerate(regions):
+                # Get bounding box
+                x, y, rw, rh = cv2.boundingRect(region.reshape(-1, 1, 2))
+                
+                # Skip tiny regions
+                if rw < 20 or rh < 10:
+                    continue
+                
+                # Crop and OCR - use unique filename per crop
+                crop = img[y:y+rh, x:x+rw]
+                
+                # Create temp file but close it immediately before Tesseract uses it
+                with tempfile.NamedTemporaryFile(
+                    suffix='.png',
+                    delete=False,
+                    dir=temp_dir,
+                    prefix=f'crop_{idx}_'
+                ) as tmp:
+                    tmp_path = Path(tmp.name)
+                # File is now closed, safe for Tesseract to use
                 
                 try:
+                    cv2.imwrite(str(tmp_path), crop)
                     text, _, conf = self.tesseract.extract_text(tmp_path)
                     if conf >= 0.5 and text.strip():
                         # Create text block
@@ -163,7 +175,21 @@ class OCRManager:
                         ))
                         full_text_parts.append(text.strip())
                 finally:
-                    tmp_path.unlink(missing_ok=True)
+                    # Retry delete with small delay for Windows file locks
+                    for attempt in range(3):
+                        try:
+                            tmp_path.unlink(missing_ok=True)
+                            break
+                        except PermissionError:
+                            if attempt < 2:
+                                time.sleep(0.1)
+        finally:
+            # Clean up temp directory
+            try:
+                import shutil
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            except Exception:
+                pass
         
         # Sort blocks by position (top to bottom, left to right)
         all_blocks.sort(key=lambda b: (b.bbox['y'], b.bbox['x']))

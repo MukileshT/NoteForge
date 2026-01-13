@@ -6,9 +6,9 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 class TextCleaner:
-    def __init__(self, config):
+    def __init__(self, config, provider: str = None, model: str = None, api_key: str = None):
         self.config = config
-        self.ai_client = AIClient(config)
+        self.ai_client = AIClient(config, provider=provider, model=model, api_key=api_key)
     
     def clean_session(self, session: NoteSession):
         for page in session.pages:

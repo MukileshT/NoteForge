@@ -12,30 +12,34 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 class AIClient:
-    def __init__(self, config):
+    def __init__(self, config, provider: str = None, model: str = None, api_key: str = None):
         self.config = config
-        self.provider = config.get('ai_provider')
-        
+        # Accept explicit provider/model/api_key; fall back to config if not provided
+        self.provider = provider or config.get('ai_provider')
+        self.api_key = api_key
+        self.model = model or (config.get(f'{self.provider}_model', '') if self.provider else '')
         
         self.client: Any = None
-        self.model: str = ""
 
-        api_key_name = f'{self.provider}_api_key'
-        api_key = self.config.get(api_key_name)
+        # If provider is still None, raise with proper error
+        if not self.provider:
+            raise ValueError("No AI provider configured. Set models.selected in config/app_config.json or pass provider explicitly.")
+        
+        # Try to get API key from parameter, then config
+        if not self.api_key:
+            api_key_name = f'{self.provider}_api_key'
+            self.api_key = self.config.get(api_key_name)
 
-        if not api_key or api_key == 'YOUR_API_KEY_HERE':
+        if not self.api_key or self.api_key == 'YOUR_API_KEY_HERE':
             raise ValueError(f"{self.provider.capitalize()} API key not configured or is a placeholder in config.yaml")
 
         if self.provider == 'gemini':
-            genai.configure(api_key=api_key)
-            self.client = genai.GenerativeModel(self.config.get('gemini_model'))
-            self.model = self.config.get('gemini_model')
+            genai.configure(api_key=self.api_key)
+            self.client = genai.GenerativeModel(self.model)
         elif self.provider == 'openrouter':
-            self.client = OpenAI(api_key=api_key, base_url=self.config.get('openrouter_base_url'))
-            self.model = self.config.get('openrouter_model')
+            self.client = OpenAI(api_key=self.api_key, base_url=self.config.get('openrouter_base_url'))
         elif self.provider == 'groq':
-            self.client = Groq(api_key=api_key)
-            self.model = self.config.get('groq_model')
+            self.client = Groq(api_key=self.api_key)
         else:
             raise ValueError(f"Unknown AI provider or provider not supported: {self.provider}. Supported: gemini, openrouter, groq")
         

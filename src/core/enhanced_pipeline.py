@@ -69,10 +69,10 @@ class EnhancedProcessingPipeline:
         # Initialize other components
         self.pdf_handler = PDFHandler()
         self.page_normalizer = PageNormalizer()
-        self.metadata_extractor = MetadataExtractor(config)
+        self.metadata_extractor = MetadataExtractor(config, provider=provider_name, model=model, api_key=api_key)
         self.label_matcher = LabelMatcher(config)
         self.image_optimizer = ImageOptimizer(config)
-        self.text_cleaner = TextCleaner(config)
+        self.text_cleaner = TextCleaner(config, provider=provider_name, model=model, api_key=api_key)
         self.markdown_composer = MarkdownComposer(config)
         self.vault_writer = VaultWriter(config)
         self.index_manager = IndexManager(config)
