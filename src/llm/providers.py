@@ -9,7 +9,7 @@ from datetime import datetime
 from PIL import Image
 
 try:
-    from google import generativeai as genai
+    from google import genai
 except ImportError:
     genai = None
 
@@ -38,17 +38,27 @@ class GeminiProvider(LLMProvider):
     
     def __init__(self, config: LLMConfig):
         super().__init__(config)
-        from google import generativeai as genai
-        genai.configure(api_key=config.api_key)
-        self.client = genai.GenerativeModel(config.model)
+        from google import genai
+        from google.genai import types
+        self.genai_types = types
+        self.client = genai.Client(api_key=config.api_key)
     
     def complete(self, prompt: str, system_prompt: Optional[str] = None) -> LLMResponse:
-        full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-        response = self.client.generate_content(contents=[full_prompt])
-        tokens = len(response.text.split()) * 1.3  # Rough estimate
+        types = self.genai_types
+        parts = []
+        if system_prompt:
+            parts.append(types.Part(text=system_prompt))
+        parts.append(types.Part(text=prompt))
+        content = types.Content(role="user", parts=parts)
+        response = self.client.models.generate_content(
+            model=self.config.model,
+            contents=content
+        )
+        text = response.text or ""
+        tokens = len(text.split()) * 1.3  # Rough estimate
         self.total_tokens += int(tokens)
         return LLMResponse(
-            content=response.text,
+            content=text,
             tokens_used=int(tokens),
             model=self.config.model
         )
@@ -56,16 +66,26 @@ class GeminiProvider(LLMProvider):
     def complete_with_image(self, prompt: str, image_path: Path,
                            system_prompt: Optional[str] = None) -> LLMResponse:
         """Generate completion with image"""
-        from PIL import Image
-        img = Image.open(image_path)
-        response = self.client.generate_content(
-            contents=[system_prompt or "", prompt, img] if system_prompt else [prompt, img]
+        types = self.genai_types
+        with open(image_path, "rb") as f:
+            image_bytes = f.read()
+        parts = []
+        if system_prompt:
+            parts.append(types.Part(text=system_prompt))
+        parts.append(types.Part(text=prompt))
+        # Use correct mime type for your image, here assumed PNG
+        parts.append(types.Part.from_bytes(data=image_bytes, mime_type="image/png"))
+        content = types.Content(role="user", parts=parts)
+        response = self.client.models.generate_content(
+            model=self.config.model,
+            contents=content
         )
-        tokens = response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else 0
-        self.total_tokens += tokens
+        text = response.text or ""
+        tokens = len(text.split()) * 1.3  # Rough estimate
+        self.total_tokens += int(tokens)
         return LLMResponse(
-            content=response.text,
-            tokens_used=tokens,
+            content=text,
+            tokens_used=int(tokens),
             model=self.config.model
         )
     
@@ -99,8 +119,9 @@ class OpenRouterProvider(LLMProvider):
         tokens = response.usage.total_tokens if response.usage else 0
         self.total_tokens += tokens
         
+        content = response.choices[0].message.content or ""
         return LLMResponse(
-            content=response.choices[0].message.content,
+            content=content,
             tokens_used=tokens,
             finish_reason=response.choices[0].finish_reason,
             model=response.model
@@ -132,8 +153,9 @@ class OpenRouterProvider(LLMProvider):
         tokens = response.usage.total_tokens if response.usage else 0
         self.total_tokens += tokens
         
+        content = response.choices[0].message.content or ""
         return LLMResponse(
-            content=response.choices[0].message.content,
+            content=content,
             tokens_used=tokens,
             model=response.model
         )
@@ -166,8 +188,9 @@ class GroqProvider(LLMProvider):
         tokens = response.usage.total_tokens if response.usage else 0
         self.total_tokens += tokens
         
+        content = response.choices[0].message.content or ""
         return LLMResponse(
-            content=response.choices[0].message.content,
+            content=content,
             tokens_used=tokens,
             finish_reason=response.choices[0].finish_reason,
             model=response.model
@@ -207,8 +230,9 @@ class OllamaProvider(LLMProvider):
         tokens = response.usage.total_tokens if hasattr(response, 'usage') and response.usage else 0
         self.total_tokens += tokens
         
+        content = response.choices[0].message.content or ""
         return LLMResponse(
-            content=response.choices[0].message.content,
+            content=content,
             tokens_used=tokens,
             model=self.config.model
         )
@@ -240,8 +264,9 @@ class OllamaProvider(LLMProvider):
         tokens = response.usage.total_tokens if hasattr(response, 'usage') and response.usage else 0
         self.total_tokens += tokens
         
+        content = response.choices[0].message.content or ""
         return LLMResponse(
-            content=response.choices[0].message.content,
+            content=content,
             tokens_used=tokens,
             model=self.config.model
         )
@@ -276,8 +301,9 @@ class HuggingFaceProvider(LLMProvider):
         tokens = response.usage.total_tokens if response.usage else 0
         self.total_tokens += tokens
         
+        content = response.choices[0].message.content or ""
         return LLMResponse(
-            content=response.choices[0].message.content,
+            content=content,
             tokens_used=tokens,
             model=response.model
         )
@@ -316,8 +342,9 @@ class MistralProvider(LLMProvider):
         tokens = response.usage.total_tokens if response.usage else 0
         self.total_tokens += tokens
         
+        content = response.choices[0].message.content or ""
         return LLMResponse(
-            content=response.choices[0].message.content,
+            content=content,
             tokens_used=tokens,
             finish_reason=response.choices[0].finish_reason,
             model=response.model
@@ -350,8 +377,9 @@ class MistralProvider(LLMProvider):
         tokens = response.usage.total_tokens if response.usage else 0
         self.total_tokens += tokens
         
+        content = response.choices[0].message.content or ""
         return LLMResponse(
-            content=response.choices[0].message.content,
+            content=content,
             tokens_used=tokens,
             model=response.model
         )
