@@ -10,9 +10,11 @@ logger = get_logger(__name__)
 class LabelMatcher:
     def __init__(self, config):
         self.config = config
-        self.label_pattern = config.get('label_matching.label_pattern')
+        # Fallback pattern if not in config
+        default_pattern = r"(?:fig|figure|graph|gr|table|tbl|diagram)\s*[:.\-]?\s*\d+(?:\.\d+)?"
+        self.label_pattern = config.get('label_matching.label_pattern', default_pattern)
         self.max_distance_mult = config.get('label_matching.max_distance_multiplier', 1.5)
-        self.direction_priority = config.get('label_matching.direction_priority')
+        self.direction_priority = config.get('label_matching.direction_priority', ['below', 'right', 'above', 'left'])
     
     def match_labels(self, session: NoteSession):
         for page in session.pages:

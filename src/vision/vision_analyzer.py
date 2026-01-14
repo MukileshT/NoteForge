@@ -13,16 +13,33 @@ logger = get_logger(__name__)
 class VisionAnalyzer:
     def __init__(self, config):
         self.config = config
-        self.ai_client = AIClient(config)
-        self.ocr_strategy = config.get('ocr_strategy', 'ai')
-        self.tesseract_path = config.get('tesseract_path')
+        # Lazy AI client creation to avoid requiring AI config for local-only runs
+        self.ai_client = None
+        # Read settings from ConfigManager (supports dotted keys)
+        try:
+            self.ocr_strategy = config.get('ocr.mode', config.get('ocr_strategy', 'ai'))
+        except Exception:
+            self.ocr_strategy = 'ai'
+        try:
+            self.tesseract_path = config.get('ocr.tesseract_path', config.get('tesseract_path'))
+        except Exception:
+            self.tesseract_path = None
+        try:
+            self.use_ai_fallback = config.get('ocr.use_ai_fallback', True)
+        except Exception:
+            self.use_ai_fallback = True
 
         if self.ocr_strategy == 'local':
             if self.tesseract_path:
                 pytesseract.pytesseract.tesseract_cmd = self.tesseract_path
             else:
-                logger.warning("Local OCR strategy selected but tesseract_path not configured. Falling back to AI OCR.")
-                self.ocr_strategy = 'ai'
+                logger.warning("Local OCR strategy selected but tesseract_path not configured.")
+                if self.use_ai_fallback:
+                    logger.warning("Falling back to AI OCR.")
+                    self.ocr_strategy = 'ai'
+                else:
+                    logger.error("Local OCR strategy failed and AI fallback is disabled.")
+                    raise RuntimeError("OCR configuration error: Local OCR unavailable and AI fallback disabled.")
 
     def analyze_page(self, image_path: Path) -> Dict:
         if self.ocr_strategy == 'local':
@@ -54,6 +71,8 @@ Return ONLY JSON array:
 Coordinates are normalized 0-1. type: diagram, graph, circuit, table"""
         try:
             # First AI call for Text Blocks
+            if self.ai_client is None:
+                self.ai_client = AIClient(self.config)
             text_ai_response = self.ai_client.analyze_image(image_path, ocr_prompt)
             full_text = text_ai_response.get("full_text", "")
             text_blocks_data = text_ai_response.get("text_blocks", [])

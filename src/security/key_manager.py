@@ -5,31 +5,12 @@ from pathlib import Path
 from typing import Dict, Optional
 from datetime import datetime
 
-# #region agent log
-try:
-    with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
-        f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_keymgr_before_crypto", "timestamp": int(datetime.now().timestamp() * 1000), "location": "key_manager.py:10", "message": "Before importing cryptography", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
-except: pass
-# #endregion
-
 try:
     from cryptography.fernet import Fernet
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-    # #region agent log
-    try:
-        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_keymgr_crypto_success", "timestamp": int(datetime.now().timestamp() * 1000), "location": "key_manager.py:14", "message": "Successfully imported cryptography", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
-    except: pass
-    # #endregion
 except ImportError as e:
-    # #region agent log
-    try:
-        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_keymgr_crypto_error", "timestamp": int(datetime.now().timestamp() * 1000), "location": "key_manager.py:18", "message": "ImportError: cryptography missing", "data": {"error_type": type(e).__name__, "error_msg": str(e), "error_args": e.args}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
-    except: pass
-    # #endregion
-    raise ImportError(f"cryptography library is required but not installed. Install with: pip install cryptography") from e
+    raise ImportError("cryptography library is required but not installed. Install with: pip install cryptography") from e
 
 import base64
 from utils.logger import get_logger

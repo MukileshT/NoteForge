@@ -69,7 +69,8 @@ class MarkdownComposer:
                     md += f"![{caption}]({rel_path})\n\n"
 
             elif isinstance(block, FormulaBlock):
-                md += f"```latex\n{block.content}\n```\n\n"
+                # Remove fenced code blocks for formulas
+                md += f"$$\n{block.content}\n$$\n\n"
         
         return md
 

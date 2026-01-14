@@ -52,12 +52,12 @@ class EnhancedProcessingPipeline:
             base_url=config.get(f'{provider_name}_base_url')
         )
         
-        # Initialize OCR manager
+        # Initialize OCR manager with LLM provider for AI fallback
         self.ocr_manager = OCRManager(
             mode=ocr_mode,
             tesseract_path=config.get('tesseract_path'),
             confidence_threshold=config.get('ocr_confidence_threshold', 0.6),
-            llm_provider=self.llm_provider if ocr_mode == OCRMode.AI else None
+            llm_provider=self.llm_provider
         )
         
         # Initialize diagram detector (OpenCV-based, no AI)

@@ -1,58 +1,26 @@
 """Local OCR Engine Implementations"""
+import os
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from abc import ABC, abstractmethod
-from datetime import datetime
-import json
+import logging
 
-# #region agent log
-try:
-    with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
-        f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_before_cv2", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:10", "message": "Before importing cv2", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "E"}) + "\n")
-except: pass
-# #endregion
+# Disable oneDNN/MKL-DNN and limit threads to avoid Windows CPU crashes
+os.environ['FLAGS_use_mkldnn'] = '0'
+os.environ['FLAGS_use_oneDNN'] = '0'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
 try:
     import cv2
     import numpy as np
-    # #region agent log
-    try:
-        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_cv2_success", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:15", "message": "Successfully imported cv2 and numpy", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "E"}) + "\n")
-    except: pass
-    # #endregion
-except ImportError as e:
-    # #region agent log
-    try:
-        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_cv2_error", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:19", "message": "ImportError: cv2/numpy missing", "data": {"error_type": type(e).__name__, "error_msg": str(e)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "E"}) + "\n")
-    except: pass
-    # #endregion
+except ImportError:
     cv2 = None
     np = None
 
-# #region agent log
-try:
-    with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
-        f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_before_tesseract", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:25", "message": "Before importing pytesseract", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "F"}) + "\n")
-except: pass
-# #endregion
-
 try:
     import pytesseract
-    # #region agent log
-    try:
-        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_tesseract_success", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:29", "message": "Successfully imported pytesseract", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "F"}) + "\n")
-    except: pass
-    # #endregion
-except ImportError as e:
-    # #region agent log
-    try:
-        with open(r"v:\dev\projects\Python\Claude\obsidian_notes_converter\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"id": f"log_{int(datetime.now().timestamp() * 1000)}_ocr_tesseract_error", "timestamp": int(datetime.now().timestamp() * 1000), "location": "local_engines.py:33", "message": "ImportError: pytesseract missing", "data": {"error_type": type(e).__name__, "error_msg": str(e)}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "F"}) + "\n")
-    except: pass
-    # #endregion
+except ImportError:
     pytesseract = None
 
 from core.note_session import TextBlock
@@ -182,77 +150,105 @@ class TesseractEngine(LocalOCREngine):
 
 class PaddleOCREngine(LocalOCREngine):
     """PaddleOCR for handwritten text"""
-    
+    _instance = None
+    _initialized = False
+    _available = False
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self):
+        # Ensure we initialize PaddleOCR only once per process
+        if self._initialized:
+            return
         super().__init__()
         self._ocr = None
-    
-    def is_available(self) -> bool:
         try:
+            # Set Paddle-related env vars again to be safe before import
+            os.environ.setdefault('FLAGS_use_oneDNN', '0')
+            os.environ.setdefault('FLAGS_use_mkldnn', '0')
+            # Force CPU-only operation
             from paddleocr import PaddleOCR
-            return True
-        except ImportError:
-            return False
+            # Use minimal parameters (use_gpu not supported in all versions)
+            self._ocr = PaddleOCR(use_angle_cls=True, lang='en')
+            self._available = True
+        except Exception as e:
+            logger.error(f"Failed to initialize PaddleOCR: {e}")
+            self._ocr = None
+            self._available = False
+        finally:
+            self._initialized = True
+
+    def is_available(self) -> bool:
+        return bool(self._available)
     
     def extract_text(self, image_path: Path) -> Tuple[str, List[TextBlock], float]:
         """Extract text using PaddleOCR"""
         if self._ocr is None:
-            from paddleocr import PaddleOCR
-            self._ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
+            logger.error("PaddleOCR is not initialized.")
+            raise RuntimeError("PaddleOCR unavailable")
         
-        # PaddleOCR works on original image (it does its own preprocessing)
-        result = self._ocr.ocr(str(image_path), cls=True)
-        
-        if not result or not result[0]:
-            return "", [], 0.0
-        
-        # Parse results
-        full_text_parts = []
-        text_blocks = []
-        confidences = []
-        
-        # Get image dimensions for normalization
-        img = cv2.imread(str(image_path))
-        h, w = img.shape[:2]
-        
-        for line in result[0]:
-            if not line:
-                continue
+        try:
+            # PaddleOCR works on original image (it does its own preprocessing)
+            result = self._ocr.ocr(str(image_path))
             
-            bbox_coords = line[0]  # [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
-            text_info = line[1]    # (text, confidence)
+            if not result or not result[0]:
+                return "", [], 0.0
             
-            text = text_info[0]
-            conf = text_info[1]
+            # Parse results
+            full_text_parts = []
+            text_blocks = []
+            confidences = []
             
-            if conf < 0.3:  # Skip low confidence
-                continue
+            # Get image dimensions for normalization
+            img = cv2.imread(str(image_path))
+            h, w = img.shape[:2]
             
-            # Normalize bbox to 0-1
-            xs = [p[0] for p in bbox_coords]
-            ys = [p[1] for p in bbox_coords]
+            for line in result[0]:
+                if not line:
+                    continue
+                
+                bbox_coords = line[0]  # [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+                text_info = line[1]    # (text, confidence)
+                
+                text = text_info[0]
+                conf = text_info[1]
+                
+                if conf < 0.3:  # Skip low confidence
+                    continue
+                
+                # Normalize bbox to 0-1
+                xs = [p[0] for p in bbox_coords]
+                ys = [p[1] for p in bbox_coords]
+                
+                bbox = {
+                    'x': min(xs) / w,
+                    'y': min(ys) / h,
+                    'width': (max(xs) - min(xs)) / w,
+                    'height': (max(ys) - min(ys)) / h
+                }
+                
+                text_blocks.append(TextBlock(
+                    content=text,
+                    bbox=bbox,
+                    confidence=conf
+                ))
+                
+                full_text_parts.append(text)
+                confidences.append(conf)
             
-            bbox = {
-                'x': min(xs) / w,
-                'y': min(ys) / h,
-                'width': (max(xs) - min(xs)) / w,
-                'height': (max(ys) - min(ys)) / h
-            }
+            full_text = ' '.join(full_text_parts)
+            avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
             
-            text_blocks.append(TextBlock(
-                content=text,
-                bbox=bbox,
-                confidence=conf
-            ))
-            
-            full_text_parts.append(text)
-            confidences.append(conf)
-        
-        full_text = ' '.join(full_text_parts)
-        avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
-        
-        logger.info(f"PaddleOCR: {len(text_blocks)} blocks, confidence={avg_conf:.2f}")
-        return full_text, text_blocks, avg_conf
+            logger.info(f"PaddleOCR: {len(text_blocks)} blocks, confidence={avg_conf:.2f}")
+            return full_text, text_blocks, avg_conf
+        except Exception as e:
+            logger.error(f"PaddleOCR failed: {e}")
+            # Mark as permanently unavailable for this run
+            self._available = False
+            raise
 
 class EasyOCREngine(LocalOCREngine):
     """EasyOCR as fallback"""
@@ -260,19 +256,30 @@ class EasyOCREngine(LocalOCREngine):
     def __init__(self):
         super().__init__()
         self._reader = None
+        self._available = None
+        # Probe availability lazily but record failures
+        try:
+            import easyocr  # type: ignore
+            self._available = True
+        except Exception as e:
+            logger.debug(f"EasyOCR import failed: {e}")
+            self._available = False
     
     def is_available(self) -> bool:
-        try:
-            import easyocr
-            return True
-        except ImportError:
-            return False
+        return bool(self._available)
     
     def extract_text(self, image_path: Path) -> Tuple[str, List[TextBlock], float]:
         """Extract text using EasyOCR"""
+        if not self._available:
+            raise RuntimeError("EasyOCR unavailable")
         if self._reader is None:
-            import easyocr
-            self._reader = easyocr.Reader(['en'], gpu=False)
+            try:
+                import easyocr
+                self._reader = easyocr.Reader(['en'], gpu=False)
+            except Exception as e:
+                logger.error(f"Failed to initialize EasyOCR reader: {e}")
+                self._available = False
+                raise
         
         # Read image
         result = self._reader.readtext(str(image_path))

@@ -49,9 +49,13 @@ class NoteSession:
     
     @property
     def filename_base(self) -> str:
+        import re
         date_str = self.date.strftime("%Y-%m-%d")
         if self.topics:
-            topic_str = "-".join(self.topics[:3]).replace(" ", "-")[:50]
+            # Clean topics: remove invalid filename chars, limit length
+            topic_str = "-".join(self.topics[:3]).replace(" ", "-")
+            # Remove invalid filename characters: < > : " / \ | ? * [ ]
+            topic_str = re.sub(r'[<>:"\\/|?*\[\]]', '', topic_str)[:50]
         else:
             topic_str = "Notes"
         return f"{self.subject}_{date_str}_{topic_str}"

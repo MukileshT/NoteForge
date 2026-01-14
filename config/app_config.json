@@ -4,8 +4,13 @@
     "confidence_threshold": 0.6
   },
   "models": {
-    "selected": "gemini-1.5-pro",
+    "selected": "gemini-2.5-flash",
     "available": [
+      {
+        "name": "gemini-2.0-flash-exp",
+        "type": "api",
+        "provider": "gemini"
+      },
       {
         "name": "gemini-1.5-pro",
         "type": "api",
@@ -25,7 +30,7 @@
   },
   "image": {
     "max_width": 1200,
-    "quality": 70
+    "quality": 50
   },
   "security": {
     "keys_path": ""
@@ -33,5 +38,10 @@
   "vault": {
     "notes_folder": "Notes",
     "assets_folder": "assets"
+  },
+  "label_matching": {
+    "label_pattern": "(?:fig|figure|graph|gr|table|tbl|diagram)\\s*[:\\.\\-]?\\s*\\d+(?:\\.\\d+)?",
+    "max_distance_multiplier": 1.5,
+    "direction_priority": ["below", "right", "above", "left"]
   }
 }
