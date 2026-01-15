@@ -19,6 +19,26 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 class EnhancedMainWindow:
+
+    def _update_key_status(self):
+        """Update API key status display"""
+        provider = self.selected_provider.get()
+        key = self.key_manager.get_key(provider)
+        if hasattr(self, 'key_status_label'):
+            if key:
+                self.key_status_label.config(text=f"✓ API key configured for {provider}", fg="green")
+            else:
+                self.key_status_label.config(text=f"⚠ No API key for {provider}. Click 'Manage API Keys' to add.", fg="red")
+
+    def _hide_custom_model_fields(self):
+        # Hide the custom model entry frame
+        if hasattr(self, 'custom_model_frame'):
+            self.custom_model_frame.grid_remove()
+
+    def _save_custom_model(self):
+            # Placeholder: This should be implemented as needed for custom model saving
+            from tkinter import messagebox
+            messagebox.showerror('Error', 'Custom model saving is not implemented yet.')
     """Enhanced main window with all features"""
     
     def __init__(self, root: tk.Tk):
@@ -36,6 +56,7 @@ class EnhancedMainWindow:
         self.selected_ocr_mode = tk.StringVar(value="local")
         self.selected_provider = tk.StringVar(value="gemini")
         self.selected_model = tk.StringVar(value="")
+        self.llm_refinement_enabled = tk.BooleanVar(value=False)
         self.provider_models = {}
         
         self._build_ui()
@@ -68,6 +89,7 @@ class EnhancedMainWindow:
         self.vault_label = tk.Label(vault_frame, text="No vault selected", anchor="w")
         self.vault_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
+
         # OCR Mode Selection
         ocr_frame = tk.LabelFrame(self.root, text="OCR Mode", padx=10, pady=10)
         ocr_frame.pack(fill=tk.X, padx=20, pady=5)
@@ -80,6 +102,19 @@ class EnhancedMainWindow:
         self.ocr_info_label = tk.Label(ocr_frame, text="Local OCR uses Tesseract/PaddleOCR/EasyOCR", 
                                        fg="gray", font=("Arial", 8))
         self.ocr_info_label.pack(side=tk.LEFT, padx=10)
+
+        # LLM Refinement Toggle
+        llm_frame = tk.LabelFrame(self.root, text="LLM Refinement", padx=10, pady=10)
+        llm_frame.pack(fill=tk.X, padx=20, pady=5)
+        self.llm_checkbox = tk.Checkbutton(
+            llm_frame,
+            text="Enable LLM refinement after OCR",
+            variable=self.llm_refinement_enabled,
+            command=self._on_llm_toggle
+        )
+        self.llm_checkbox.pack(side=tk.LEFT, padx=10)
+        self.llm_info_label = tk.Label(llm_frame, text="Optional: Use LLM to polish OCR output.", fg="gray", font=("Arial", 8))
+        self.llm_info_label.pack(side=tk.LEFT, padx=10)
         
         # Provider Selection
         provider_frame = tk.LabelFrame(self.root, text="LLM Provider", padx=10, pady=10)
@@ -115,14 +150,17 @@ class EnhancedMainWindow:
         self.custom_model_frame.grid(row=1, column=0, columnspan=4, pady=5, sticky="w")
         self.custom_model_frame.grid_remove()
         
-        # API Key Management
-        key_frame = tk.LabelFrame(self.root, text="API Key Management", padx=10, pady=10)
-        key_frame.pack(fill=tk.X, padx=20, pady=5)
-        tk.Button(key_frame, text="Manage API Keys", 
-                 command=self._open_key_manager, width=25).pack(side=tk.LEFT, padx=5)
-        self.key_status_label = tk.Label(key_frame, text="", anchor="w")
+
+        # API Key Management (conditionally visible)
+        self.key_frame = tk.LabelFrame(self.root, text="API Key Management", padx=10, pady=10)
+        self.key_frame.pack(fill=tk.X, padx=20, pady=5)
+        tk.Button(self.key_frame, text="Manage API Keys", 
+             command=self._open_key_manager, width=25).pack(side=tk.LEFT, padx=5)
+        self.key_status_label = tk.Label(self.key_frame, text="", anchor="w")
         self.key_status_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         self._update_key_status()
+        # Hide initially if not needed
+        self._update_api_key_visibility()
         
         # Quota Status
         quota_frame = tk.LabelFrame(self.root, text="API Usage", padx=10, pady=10)
@@ -163,6 +201,19 @@ class EnhancedMainWindow:
             self.ocr_info_label.config(text="Local OCR uses Tesseract/PaddleOCR/EasyOCR", fg="gray")
         else:
             self.ocr_info_label.config(text="AI OCR uses vision models (requires API key)", fg="orange")
+        self._update_api_key_visibility()
+
+    def _on_llm_toggle(self):
+        self._update_api_key_visibility()
+
+    def _update_api_key_visibility(self):
+        """Show/hide API key management based on OCR/LLM selection"""
+        ocr_mode = self.selected_ocr_mode.get()
+        llm_enabled = self.llm_refinement_enabled.get()
+        if ocr_mode == "ai" or llm_enabled:
+            self.key_frame.pack(fill=tk.X, padx=20, pady=5)
+        else:
+            self.key_frame.pack_forget()
     
     def _on_provider_changed(self, event=None):
         """Handle provider change"""
@@ -211,64 +262,55 @@ class EnhancedMainWindow:
         self.model_combo.bind('<FocusOut>', self._on_model_focus_out)
 
 
-    def _prompt_add_custom_model(self):
-        # Kept for backward compatibility but no longer used.
-        return
-
-    def _show_custom_model_fields(self):
-        # Show inline fields and focus entry
-        self.custom_model_entry.delete(0, tk.END)
-        self.custom_model_frame.grid()
-        self.custom_model_entry.focus_set()
-
-    def _hide_custom_model_fields(self):
-        self.custom_model_frame.grid_remove()
-
-    def _save_custom_model(self):
-        name = self.custom_model_entry.get().strip()
-        if not name:
-            messagebox.showerror('Error', 'Custom model name cannot be empty')
+    def _start_processing(self):
+        """Start processing"""
+        if not self.input_files:
+            messagebox.showerror("Error", "No files selected")
             return
-        provider = self.selected_provider.get() or 'custom'
-        mtype = self.custom_model_type.get() or 'api'
-        try:
-            self.config.add_model(name=name, provider=provider, mtype=mtype)
-            self.selected_model.set(name)
-            self._hide_custom_model_fields()
-            self._update_model_list()
-        except Exception as e:
-            messagebox.showerror('Error', f'Failed to add model: {e}')
-
-    def _on_model_typed(self, event=None):
-        # Handle when user types a model name and presses Enter
-        val = self.selected_model.get().strip()
-        if not val:
+        if not self.vault_path:
+            messagebox.showerror("Error", "No vault selected")
             return
         provider = self.selected_provider.get()
-        names = self.provider_models.get(provider, [])
-        if val in names:
-            # existing model, nothing to do
+        api_key = self.key_manager.get_key(provider)
+        ocr_mode_str = self.selected_ocr_mode.get()
+        ocr_mode = OCRMode.LOCAL if ocr_mode_str == "local" else OCRMode.AI
+        llm_enabled = self.llm_refinement_enabled.get()
+        # Enforce API key requirement
+        if (ocr_mode == OCRMode.AI or llm_enabled) and not api_key:
+            messagebox.showerror("Error", f"No API key configured for {provider}.\nPlease configure an API key in 'Manage API Keys'.")
             return
-        if val == 'Other / Custom':
-            self._show_custom_model_fields()
-            return
-        # Treat typed model as custom: add and select
+        model = self.selected_model.get()
+        if not model:
+            model = ProviderFactory.get_default_model(provider)
+        estimated_tokens = 2000  # Rough estimate
+        if not self.quota_manager.check_quota(provider, estimated_tokens):
+            if not messagebox.askyesno("Quota Warning", "Quota limit may be exceeded. Continue anyway?"):
+                return
+        progress_win = ProgressWindow(self.root)
         try:
-            self.config.add_model(name=val, provider=provider, mtype='api')
-            self.selected_model.set(val)
-            self._update_model_list()
+            pipeline = EnhancedProcessingPipeline(
+                config=self.config,
+                provider_name=provider,
+                api_key=api_key,
+                model=model,
+                ocr_mode=ocr_mode
+            )
+            # Pass LLM toggle to pipeline if needed (extend pipeline signature if required)
+            # result = pipeline.process(self.input_files, self.vault_path, progress_win.update, llm_refinement=llm_enabled)
+            result = pipeline.process(self.input_files, self.vault_path, progress_win.update)
+            progress_win.close()
+            msg = f"Success!\n\nCreated: {result.markdown_filename}"
+            if result.warnings:
+                msg += f"\n\nWarnings ({len(result.warnings)}):\n"
+                msg += "\n".join(result.warnings[:5])
+                if len(result.warnings) > 5:
+                    msg += f"\n... and {len(result.warnings) - 5} more"
+            messagebox.showinfo("Complete", msg)
+            self._update_quota_status()
         except Exception as e:
-            messagebox.showerror('Error', f'Failed to add typed model: {e}')
-
-    def _on_model_focus_out(self, event=None):
-        # Same behavior as pressing Enter
-        try:
-            self._on_model_typed()
-        except Exception:
-            pass
-    
-    def _update_key_status(self):
-        """Update API key status display"""
+            progress_win.close()
+            logger.error(f"Processing failed: {e}", exc_info=True)
+            messagebox.showerror("Error", f"Processing failed:\n{str(e)}")
         provider = self.selected_provider.get()
         key = self.key_manager.get_key(provider)
         
