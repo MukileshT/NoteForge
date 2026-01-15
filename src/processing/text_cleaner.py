@@ -8,9 +8,17 @@ logger = get_logger(__name__)
 class TextCleaner:
     def __init__(self, config, provider: str = None, model: str = None, api_key: str = None):
         self.config = config
-        self.ai_client = AIClient(config, provider=provider, model=model, api_key=api_key)
+        try:
+            self.ai_client = AIClient(config, provider=provider, model=model, api_key=api_key)
+        except Exception as e:
+            logger.info(f"AI client not initialized for TextCleaner: {e}")
+            self.ai_client = None
     
     def clean_session(self, session: NoteSession):
+        if not self.ai_client:
+            logger.info("AI client not configured; skipping text cleaning stage")
+            return
+
         for page in session.pages:
             self._clean_page(page)
 

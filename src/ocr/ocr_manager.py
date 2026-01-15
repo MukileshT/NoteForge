@@ -21,7 +21,8 @@ class OCRManager:
     def __init__(self, mode: OCRMode = OCRMode.LOCAL, 
                  tesseract_path: Optional[str] = None,
                  confidence_threshold: float = 0.6,
-                 llm_provider=None):
+                 llm_provider=None,
+                 easyocr_gpu: bool = False):
         """
         Args:
             mode: OCR mode (LOCAL or AI)
@@ -47,9 +48,13 @@ class OCRManager:
         except Exception:
             self.use_ai_fallback = True
         
-        # Initialize local engines
+        # Initialize local engines (pass GPU preference to EasyOCR)
         self.paddle = PaddleOCREngine()
-        self.easyocr = EasyOCREngine()
+        try:
+            self.easyocr = EasyOCREngine(gpu=bool(easyocr_gpu))
+        except TypeError:
+            # Older EasyOCREngine signature may not accept gpu arg; fallback
+            self.easyocr = EasyOCREngine()
         
         # Check availability
         self.local_engines_available = {

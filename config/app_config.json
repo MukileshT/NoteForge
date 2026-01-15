@@ -1,7 +1,8 @@
 {
   "ocr": {
     "mode": "local",
-    "confidence_threshold": 0.6
+    "confidence_threshold": 0.6,
+    "easyocr_gpu": true
   },
   "models": {
     "selected": "gemini-2.5-flash",
@@ -42,6 +43,11 @@
   "label_matching": {
     "label_pattern": "(?:fig|figure|graph|gr|table|tbl|diagram)\\s*[:\\.\\-]?\\s*\\d+(?:\\.\\d+)?",
     "max_distance_multiplier": 1.5,
-    "direction_priority": ["below", "right", "above", "left"]
+    "direction_priority": [
+      "below",
+      "right",
+      "above",
+      "left"
+    ]
   }
 }

@@ -54,6 +54,7 @@ class EnhancedMainWindow:
         self.input_files = []
         self.vault_path = None
         self.selected_ocr_mode = tk.StringVar(value="local")
+        self.easyocr_gpu_enabled = tk.BooleanVar(value=False)
         self.selected_provider = tk.StringVar(value="gemini")
         self.selected_model = tk.StringVar(value="")
         self.llm_refinement_enabled = tk.BooleanVar(value=False)
@@ -103,6 +104,15 @@ class EnhancedMainWindow:
                                        fg="gray", font=("Arial", 8))
         self.ocr_info_label.pack(side=tk.LEFT, padx=10)
 
+        # EasyOCR GPU option (visible when using local OCR)
+        self.easyocr_gpu_checkbox = tk.Checkbutton(
+            ocr_frame,
+            text="Use GPU for EasyOCR (requires CUDA-enabled torch)",
+            variable=self.easyocr_gpu_enabled,
+            command=self._on_easyocr_gpu_toggle
+        )
+        self.easyocr_gpu_checkbox.pack(side=tk.LEFT, padx=10)
+
         # LLM Refinement Toggle
         llm_frame = tk.LabelFrame(self.root, text="LLM Refinement", padx=10, pady=10)
         llm_frame.pack(fill=tk.X, padx=20, pady=5)
@@ -117,24 +127,31 @@ class EnhancedMainWindow:
         self.llm_info_label.pack(side=tk.LEFT, padx=10)
         
         # Provider Selection
-        provider_frame = tk.LabelFrame(self.root, text="LLM Provider", padx=10, pady=10)
-        provider_frame.pack(fill=tk.X, padx=20, pady=5)
+        self.provider_frame = tk.LabelFrame(self.root, text="LLM Provider", padx=10, pady=10)
+        self.provider_frame.pack(fill=tk.X, padx=20, pady=5)
         
-        tk.Label(provider_frame, text="Provider:").grid(row=0, column=0, padx=5, sticky="w")
-        provider_combo = ttk.Combobox(provider_frame, textvariable=self.selected_provider,
+        tk.Label(self.provider_frame, text="Provider:").grid(row=0, column=0, padx=5, sticky="w")
+        provider_combo = ttk.Combobox(self.provider_frame, textvariable=self.selected_provider,
                                      values=ProviderFactory.get_available_providers(),
                                      state="readonly", width=20)
         provider_combo.grid(row=0, column=1, padx=5)
         provider_combo.bind("<<ComboboxSelected>>", self._on_provider_changed)
         
-        tk.Label(provider_frame, text="Model:").grid(row=0, column=2, padx=5, sticky="w")
-        # Allow typing model names directly
-        self.model_combo = ttk.Combobox(provider_frame, textvariable=self.selected_model,
-                        state="normal", width=25)
-        self.model_combo.grid(row=0, column=3, padx=5)
+        tk.Label(self.provider_frame, text="Model:").grid(row=0, column=2, padx=5, sticky="w")
         
+        # Model selection
+        model_frame = tk.LabelFrame(self.root, text="Model Selection", padx=10, pady=10)
+        model_frame.pack(fill=tk.X, padx=20, pady=5)
+
+        tk.Label(model_frame, text="Select Model:").pack(side=tk.LEFT, padx=5)
+        self.model_combo = ttk.Combobox(model_frame, state="readonly")
+        self.model_combo.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        self.model_combo.bind('<<ComboboxSelected>>', self._on_provider_changed)
+        self.model_combo.bind('<Return>', self._on_model_typed)
+        self.model_combo.bind('<FocusOut>', self._on_model_focus_out)
+
         # Inline custom model fields (hidden by default)
-        self.custom_model_frame = tk.Frame(provider_frame)
+        self.custom_model_frame = tk.Frame(self.provider_frame)
         tk.Label(self.custom_model_frame, text="Custom model name:").grid(row=0, column=0, padx=5, sticky="w")
         self.custom_model_entry = tk.Entry(self.custom_model_frame, width=30)
         self.custom_model_entry.grid(row=0, column=1, padx=5)
@@ -159,7 +176,7 @@ class EnhancedMainWindow:
         self.key_status_label = tk.Label(self.key_frame, text="", anchor="w")
         self.key_status_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         self._update_key_status()
-        # Hide initially if not needed
+        # Hide provider/model/key UI initially if not needed
         self._update_api_key_visibility()
         
         # Quota Status
@@ -184,6 +201,13 @@ class EnhancedMainWindow:
         ocr_strategy = self.config.get('ocr.mode', 'local')
         self.selected_ocr_mode.set(ocr_strategy)
 
+        # Load EasyOCR GPU setting
+        try:
+            gpu_enabled = bool(self.config.get('ocr.easyocr_gpu', False))
+            self.easyocr_gpu_enabled.set(gpu_enabled)
+        except Exception:
+            self.easyocr_gpu_enabled.set(False)
+
         # Load provider from config if present
         selected_model = self.config.get('models.selected', '')
         if selected_model:
@@ -199,9 +223,27 @@ class EnhancedMainWindow:
         mode = self.selected_ocr_mode.get()
         if mode == "local":
             self.ocr_info_label.config(text="Local OCR uses Tesseract/PaddleOCR/EasyOCR", fg="gray")
+            # Enable GPU checkbox when local OCR
+            try:
+                self.easyocr_gpu_checkbox.configure(state='normal')
+            except Exception:
+                pass
         else:
             self.ocr_info_label.config(text="AI OCR uses vision models (requires API key)", fg="orange")
+            # Disable GPU checkbox when AI OCR selected
+            try:
+                self.easyocr_gpu_checkbox.configure(state='disabled')
+            except Exception:
+                pass
         self._update_api_key_visibility()
+
+    def _on_easyocr_gpu_toggle(self):
+        """Persist EasyOCR GPU toggle to config"""
+        try:
+            self.config.set('ocr.easyocr_gpu', bool(self.easyocr_gpu_enabled.get()))
+        except Exception:
+            logger = get_logger(__name__)
+            logger.error("Failed to save easyocr_gpu setting to config")
 
     def _on_llm_toggle(self):
         self._update_api_key_visibility()
@@ -210,10 +252,33 @@ class EnhancedMainWindow:
         """Show/hide API key management based on OCR/LLM selection"""
         ocr_mode = self.selected_ocr_mode.get()
         llm_enabled = self.llm_refinement_enabled.get()
+        # Show provider/model selection and API key only when AI OCR or LLM refinement is enabled
         if ocr_mode == "ai" or llm_enabled:
-            self.key_frame.pack(fill=tk.X, padx=20, pady=5)
+            # Ensure provider/model UI visible
+            try:
+                self.provider_frame.pack(fill=tk.X, padx=20, pady=5)
+            except Exception:
+                pass
+            try:
+                self.key_frame.pack(fill=tk.X, padx=20, pady=5)
+            except Exception:
+                pass
         else:
-            self.key_frame.pack_forget()
+            # Hide provider/model and API key UI
+            try:
+                self.provider_frame.pack_forget()
+            except Exception:
+                pass
+            try:
+                self.key_frame.pack_forget()
+            except Exception:
+                pass
+            # ensure inline custom model UI hidden if present
+            if hasattr(self, 'custom_model_frame'):
+                try:
+                    self.custom_model_frame.grid_remove()
+                except Exception:
+                    pass
     
     def _on_provider_changed(self, event=None):
         """Handle provider change"""
@@ -243,9 +308,11 @@ class EnhancedMainWindow:
         # Otherwise choose selected model from config if matches, else first available
         cfg_selected = self.config.get('models.selected', '')
         if cfg_selected and cfg_selected in names:
+            # Ensure selected_model.set receives a valid string
+            cfg_selected = str(cfg_selected) if cfg_selected else "Default Model"
             self.selected_model.set(cfg_selected)
         elif names and names[0] != 'Other / Custom':
-            self.selected_model.set(names[0])
+            self.selected_model.set(str(names[0]) if names[0] else "Default Model")
         else:
             self.selected_model.set('')
 
@@ -279,6 +346,8 @@ class EnhancedMainWindow:
         if (ocr_mode == OCRMode.AI or llm_enabled) and not api_key:
             messagebox.showerror("Error", f"No API key configured for {provider}.\nPlease configure an API key in 'Manage API Keys'.")
             return
+        api_key = str(api_key)  # Ensure api_key is a valid string
+
         model = self.selected_model.get()
         if not model:
             model = ProviderFactory.get_default_model(provider)
@@ -293,7 +362,8 @@ class EnhancedMainWindow:
                 provider_name=provider,
                 api_key=api_key,
                 model=model,
-                ocr_mode=ocr_mode
+                ocr_mode=ocr_mode,
+                llm_enabled=llm_enabled
             )
             # Pass LLM toggle to pipeline if needed (extend pipeline signature if required)
             # result = pipeline.process(self.input_files, self.vault_path, progress_win.update, llm_refinement=llm_enabled)
@@ -433,77 +503,20 @@ class EnhancedMainWindow:
         else:
             tk.Label(list_frame, text="No providers configured", fg="gray").pack()
     
-    def _start_processing(self):
-        """Start processing"""
-        if not self.input_files:
-            messagebox.showerror("Error", "No files selected")
-            return
-        if not self.vault_path:
-            messagebox.showerror("Error", "No vault selected")
-            return
-        
-        # Get provider and API key
-        provider = self.selected_provider.get()
-        api_key = self.key_manager.get_key(provider)
-        
-        if not api_key:
-            messagebox.showerror("Error", 
-                               f"No API key configured for {provider}.\n"
-                               "Please configure an API key in 'Manage API Keys'.")
-            return
-        
-        # Get OCR mode
-        ocr_mode_str = self.selected_ocr_mode.get()
-        ocr_mode = OCRMode.LOCAL if ocr_mode_str == "local" else OCRMode.AI
-        
-        # Get model
-        model = self.selected_model.get()
-        if not model:
-            model = ProviderFactory.get_default_model(provider)
-        
-        # Check quota
-        estimated_tokens = 2000  # Rough estimate
-        if not self.quota_manager.check_quota(provider, estimated_tokens):
-            if not messagebox.askyesno("Quota Warning", 
-                                     "Quota limit may be exceeded. Continue anyway?"):
-                return
-        
-        # Create progress window
-        progress_win = ProgressWindow(self.root)
-        
-        try:
-            # Create pipeline
-            pipeline = EnhancedProcessingPipeline(
-                config=self.config,
-                provider_name=provider,
-                api_key=api_key,
-                model=model,
-                ocr_mode=ocr_mode
-            )
-            
-            # Process
-            result = pipeline.process(self.input_files, self.vault_path, 
-                                     progress_win.update)
-            
-            progress_win.close()
-            
-            # Show success
-            msg = f"Success!\n\nCreated: {result.markdown_filename}"
-            if result.warnings:
-                msg += f"\n\nWarnings ({len(result.warnings)}):\n"
-                msg += "\n".join(result.warnings[:5])
-                if len(result.warnings) > 5:
-                    msg += f"\n... and {len(result.warnings) - 5} more"
-            
-            messagebox.showinfo("Complete", msg)
-            
-            # Update quota status
-            self._update_quota_status()
-            
-        except Exception as e:
-            progress_win.close()
-            logger.error(f"Processing failed: {e}", exc_info=True)
-            messagebox.showerror("Error", f"Processing failed:\n{str(e)}")
+    def _on_model_typed(self, event=None):
+        """Handle typed model names"""
+        typed_model = self.model_combo.get()
+        if typed_model not in self.model_combo['values']:
+            self.model_combo.set('Other / Custom')
+            self._show_custom_model_fields()
+
+    def _on_model_focus_out(self, event=None):
+        """Handle focus-out event for model selection"""
+        self._on_model_typed(event)
+
+    def _show_custom_model_fields(self):
+        """Show the custom model entry fields"""
+        self.custom_model_frame.grid(row=1, column=0, columnspan=4, sticky="w", padx=5, pady=5)
 
 def main():
     root = tk.Tk()

@@ -38,7 +38,7 @@ class ConfigManager:
 
     def _default_config(self) -> Dict[str, Any]:
         return {
-            "ocr": {"mode": "local", "confidence_threshold": 0.6, "use_ai_fallback": True},
+            "ocr": {"mode": "local", "confidence_threshold": 0.6, "use_ai_fallback": True, "easyocr_gpu": False},
             "models": {"selected": "", "available": []},
             "image": {"max_width": 1200, "quality": 70},
             "security": {"keys_path": ""},

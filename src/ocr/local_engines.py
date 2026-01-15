@@ -251,12 +251,13 @@ class PaddleOCREngine(LocalOCREngine):
             raise
 
 class EasyOCREngine(LocalOCREngine):
-    """EasyOCR as fallback"""
-    
-    def __init__(self):
+    """EasyOCR as fallback with optional GPU support and CPU fallback"""
+
+    def __init__(self, gpu: bool = False):
         super().__init__()
         self._reader = None
         self._available = None
+        self._requested_gpu = bool(gpu)
         # Probe availability lazily but record failures
         try:
             import easyocr  # type: ignore
@@ -264,23 +265,40 @@ class EasyOCREngine(LocalOCREngine):
         except Exception as e:
             logger.debug(f"EasyOCR import failed: {e}")
             self._available = False
-    
+
     def is_available(self) -> bool:
         return bool(self._available)
-    
+
     def extract_text(self, image_path: Path) -> Tuple[str, List[TextBlock], float]:
-        """Extract text using EasyOCR"""
+        """Extract text using EasyOCR. Attempts GPU init if requested, falls back to CPU on failure."""
         if not self._available:
             raise RuntimeError("EasyOCR unavailable")
         if self._reader is None:
             try:
                 import easyocr
-                self._reader = easyocr.Reader(['en'], gpu=False)
+                # Attempt requested mode first
+                try:
+                    self._reader = easyocr.Reader(['en'], gpu=self._requested_gpu)
+                except Exception as e:
+                    logger.warning(f"EasyOCR reader init with gpu={self._requested_gpu} failed: {e}")
+                    if self._requested_gpu:
+                        # Attempt CPU fallback
+                        try:
+                            self._reader = easyocr.Reader(['en'], gpu=False)
+                            logger.info("EasyOCR initialized with CPU fallback after GPU init failure")
+                        except Exception as e2:
+                            logger.error(f"EasyOCR CPU fallback also failed: {e2}")
+                            self._available = False
+                            raise
+                    else:
+                        logger.error(f"EasyOCR reader init failed: {e}")
+                        self._available = False
+                        raise
             except Exception as e:
                 logger.error(f"Failed to initialize EasyOCR reader: {e}")
                 self._available = False
                 raise
-        
+
         # Read image
         result = self._reader.readtext(str(image_path))
         

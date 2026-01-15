@@ -11,7 +11,12 @@ class MetadataExtractor:
     def __init__(self, config, provider: str = None, model: str = None, api_key: str = None):
         self.config = config
         # Pass provider/model/api_key to AIClient to use new config format
-        self.ai_client = AIClient(config, provider=provider, model=model, api_key=api_key)
+        try:
+            self.ai_client = AIClient(config, provider=provider, model=model, api_key=api_key)
+        except Exception as e:
+            # No AI provider configured or initialization failed: operate in non-AI mode
+            logger.info(f"AI client not initialized for metadata extractor: {e}")
+            self.ai_client = None
         self.subject_pattern = config.get('subject_code_pattern')
         self.date_formats = config.get('date_formats')
     
@@ -52,6 +57,11 @@ Return ONLY JSON:
     "date": "2026-01-11",
     "topics": ["topic1"]
 }}'''
+        # If AI client is not available, return empty metadata to be handled upstream
+        if not self.ai_client:
+            logger.info("AI client unavailable; skipping AI metadata extraction")
+            return {'subject': None, 'date': None, 'topics': []}
+
         try:
             result = self.ai_client.analyze_text(prompt) # Use analyze_text since we're feeding it text
             date_str = result.get('date')

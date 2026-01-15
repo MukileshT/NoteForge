@@ -28,36 +28,42 @@ class EnhancedProcessingPipeline:
     """Enhanced processing pipeline with all new features"""
     
     def __init__(self, config: ConfigManager, provider_name: str, api_key: str, 
-                 model: str = None, ocr_mode: OCRMode = OCRMode.LOCAL):
+                 model: str = None, ocr_mode: OCRMode = OCRMode.LOCAL, llm_enabled: bool = False):
         self.config = config
         self.provider_name = provider_name
-        
+        self.llm_enabled = llm_enabled
+
         # Initialize quota manager
         self.quota_manager = QuotaManager()
-        self.quota_manager.set_limits(
-            provider_name,
-            max_tokens_per_hour=config.get('max_tokens_per_hour', 100000),
-            max_tokens_per_day=config.get('max_tokens_per_day', 1000000),
-            max_requests_per_minute=config.get('max_requests_per_minute', 60),
-            max_vision_calls_per_hour=config.get('max_vision_calls_per_hour', 100)
-        )
-        
-        # Create LLM provider
-        self.llm_provider = ProviderFactory.create(
-            provider_name=provider_name,
-            api_key=api_key,
-            model=model or ProviderFactory.get_default_model(provider_name),
-            max_tokens=config.get('max_tokens', 1024),
-            temperature=config.get('temperature', 0.7),
-            base_url=config.get(f'{provider_name}_base_url')
-        )
-        
-        # Initialize OCR manager with LLM provider for AI fallback
+        if provider_name and (llm_enabled or ocr_mode == OCRMode.AI):
+            self.quota_manager.set_limits(
+                provider_name,
+                max_tokens_per_hour=config.get('max_tokens_per_hour', 100000),
+                max_tokens_per_day=config.get('max_tokens_per_day', 1000000),
+                max_requests_per_minute=config.get('max_requests_per_minute', 60),
+                max_vision_calls_per_hour=config.get('max_vision_calls_per_hour', 100)
+            )
+
+        # Create LLM provider only if explicitly enabled or AI OCR mode selected
+        if llm_enabled or ocr_mode == OCRMode.AI:
+            self.llm_provider = ProviderFactory.create(
+                provider_name=provider_name,
+                api_key=api_key,
+                model=model or ProviderFactory.get_default_model(provider_name),
+                max_tokens=config.get('max_tokens', 1024),
+                temperature=config.get('temperature', 0.7),
+                base_url=config.get(f'{provider_name}_base_url')
+            )
+        else:
+            self.llm_provider = None
+
+        # Initialize OCR manager with optional LLM provider for AI fallback
         self.ocr_manager = OCRManager(
             mode=ocr_mode,
             tesseract_path=config.get('tesseract_path'),
             confidence_threshold=config.get('ocr_confidence_threshold', 0.6),
-            llm_provider=self.llm_provider
+            llm_provider=self.llm_provider,
+            easyocr_gpu=config.get('ocr.easyocr_gpu', False)
         )
         
         # Initialize diagram detector (OpenCV-based, no AI)
@@ -69,10 +75,15 @@ class EnhancedProcessingPipeline:
         # Initialize other components
         self.pdf_handler = PDFHandler()
         self.page_normalizer = PageNormalizer()
-        self.metadata_extractor = MetadataExtractor(config, provider=provider_name, model=model, api_key=api_key)
+        # If LLMs not enabled, pass no provider to metadata/text cleaners so they run in non-AI mode
+        meta_provider = provider_name if (self.llm_enabled or ocr_mode == OCRMode.AI) else None
+        meta_model = model if (self.llm_enabled or ocr_mode == OCRMode.AI) else None
+        meta_api_key = api_key if (self.llm_enabled or ocr_mode == OCRMode.AI) else None
+
+        self.metadata_extractor = MetadataExtractor(config, provider=meta_provider, model=meta_model, api_key=meta_api_key)
         self.label_matcher = LabelMatcher(config)
         self.image_optimizer = ImageOptimizer(config)
-        self.text_cleaner = TextCleaner(config, provider=provider_name, model=model, api_key=api_key)
+        self.text_cleaner = TextCleaner(config, provider=meta_provider, model=meta_model, api_key=meta_api_key)
         self.markdown_composer = MarkdownComposer(config)
         self.vault_writer = VaultWriter(config)
         self.index_manager = IndexManager(config)
