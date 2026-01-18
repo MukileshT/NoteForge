@@ -189,12 +189,8 @@ class PaddleOCREngine(LocalOCREngine):
         """
         try:
             import paddle
-            import paddleocr
-            
             paddle_version = paddle.__version__
-            paddleocr_version = paddleocr.__version__
-            
-            logger.info(f"Detected paddle {paddle_version}, paddleocr {paddleocr_version}")
+            logger.info(f"Detected paddle {paddle_version}")
             
             # Check if inference API exists
             try:
@@ -214,10 +210,23 @@ class PaddleOCREngine(LocalOCREngine):
                 logger.warning(f"Could not verify paddle.inference API: {e}")
                 # Continue anyway, might work
             
+            # Now check paddleocr (may fail due to DLL issues)
+            try:
+                import paddleocr
+                paddleocr_version = paddleocr.__version__
+                logger.info(f"Detected paddleocr {paddleocr_version}")
+            except Exception as e:
+                logger.error(f"paddleocr import failed: {e}")
+                logger.info("PaddleOCR unavailable, will use EasyOCR fallback")
+                return False
+            
             return True
             
         except ImportError as e:
-            logger.error(f"paddle or paddleocr not installed: {e}")
+            logger.error(f"paddle not installed: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error checking paddle compatibility: {e}")
             return False
 
     def is_available(self) -> bool:

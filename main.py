@@ -3,6 +3,14 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except AttributeError:
+        import codecs
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+
 # Load environment variables from .env if present
 load_dotenv(override=True)
 
