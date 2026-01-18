@@ -3,7 +3,6 @@ import os
 import json
 from pathlib import Path
 from typing import Dict, Optional
-from datetime import datetime
 
 try:
     from cryptography.fernet import Fernet
@@ -12,7 +11,6 @@ try:
 except ImportError as e:
     raise ImportError("cryptography library is required but not installed. Install with: pip install cryptography") from e
 
-import base64
 from utils.logger import get_logger
 
 logger = get_logger(__name__)

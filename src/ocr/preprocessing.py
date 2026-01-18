@@ -2,7 +2,6 @@
 import cv2
 import numpy as np
 from pathlib import Path
-from PIL import Image
 from utils.logger import get_logger
 
 logger = get_logger(__name__)

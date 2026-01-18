@@ -1,6 +1,6 @@
 """Rule-Based Text Structuring (No LLM Tokens)"""
 import re
-from typing import List, Dict
+from typing import Dict
 from utils.logger import get_logger
 
 logger = get_logger(__name__)

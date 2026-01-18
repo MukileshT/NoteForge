@@ -15,3 +15,10 @@ Thumbs.db
 .api_keys.enc
 .master.key
 .quota_usage.json
+
+# Environment variables
+.env
+.env.local
+
+# Generated requirements
+requirements_generated.txt

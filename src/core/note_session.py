@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import date
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from pathlib import Path
 
 @dataclass

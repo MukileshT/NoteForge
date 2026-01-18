@@ -1,6 +1,6 @@
 """Unified LLM Provider Interface"""
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from pathlib import Path
 from dataclasses import dataclass
 

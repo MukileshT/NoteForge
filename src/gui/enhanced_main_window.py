@@ -3,9 +3,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from pathlib import Path
 import sys
-from typing import Optional
-
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
 
 from core.config_manager import ConfigManager
 from core.enhanced_pipeline import EnhancedProcessingPipeline
@@ -198,8 +197,9 @@ class EnhancedMainWindow:
     def _load_settings(self):
         """Load saved settings"""
         # Load OCR mode
-        ocr_strategy = self.config.get('ocr.mode', 'local')
-        self.selected_ocr_mode.set(ocr_strategy)
+        ocr_mode = self.config.get('ocr.mode', 'local')
+        self.selected_ocr_mode.set(ocr_mode)
+        self._on_ocr_mode_changed()
 
         # Load EasyOCR GPU setting
         try:
@@ -220,6 +220,10 @@ class EnhancedMainWindow:
     
     def _on_ocr_mode_changed(self):
         """Handle OCR mode change"""
+        # Persist OCR mode to config when changed
+        mode = self.selected_ocr_mode.get()
+        self.config.set('ocr.mode', mode)
+
         mode = self.selected_ocr_mode.get()
         if mode == "local":
             self.ocr_info_label.config(text="Local OCR uses Tesseract/PaddleOCR/EasyOCR", fg="gray")
@@ -357,17 +361,19 @@ class EnhancedMainWindow:
                 return
         progress_win = ProgressWindow(self.root)
         try:
-            pipeline = EnhancedProcessingPipeline(
+            # Pass OCR mode from config to pipeline
+            ocr_mode_str = self.selected_ocr_mode.get()
+            ocr_mode = OCRMode.LOCAL if ocr_mode_str == 'local' else OCRMode.AI
+            self.pipeline = EnhancedProcessingPipeline(
                 config=self.config,
-                provider_name=provider,
-                api_key=api_key,
-                model=model,
+                provider_name=self.selected_provider.get(),
+                api_key=str(self.key_manager.get_key(self.selected_provider.get())),
+                model=self.selected_model.get(),
                 ocr_mode=ocr_mode,
-                llm_enabled=llm_enabled
+                llm_enabled=self.llm_refinement_enabled.get()
             )
-            # Pass LLM toggle to pipeline if needed (extend pipeline signature if required)
             # result = pipeline.process(self.input_files, self.vault_path, progress_win.update, llm_refinement=llm_enabled)
-            result = pipeline.process(self.input_files, self.vault_path, progress_win.update)
+            result = self.pipeline.process(self.input_files, self.vault_path, progress_win.update)
             progress_win.close()
             msg = f"Success!\n\nCreated: {result.markdown_filename}"
             if result.warnings:

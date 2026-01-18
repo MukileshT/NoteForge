@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 from core.note_session import TextBlock
 from vision.ai_client import AIClient
 from utils.logger import get_logger

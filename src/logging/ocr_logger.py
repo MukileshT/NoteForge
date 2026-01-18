@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 class OCRLogger:
     def __init__(self, log_dir: str):

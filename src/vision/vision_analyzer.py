@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List
 import pytesseract
 from PIL import Image
 import cv2

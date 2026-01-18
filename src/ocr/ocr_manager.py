@@ -1,9 +1,9 @@
 """Unified OCR Manager with Local and AI modes"""
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, Optional
 from enum import Enum
 
-from core.note_session import TextBlock, DiagramRegion
+from core.note_session import TextBlock
 from ocr.local_engines import PaddleOCREngine, EasyOCREngine
 from ocr.preprocessing import ImagePreprocessor
 from utils.logger import get_logger

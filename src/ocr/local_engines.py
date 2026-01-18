@@ -1,15 +1,9 @@
 """Local OCR Engine Implementations"""
-import os
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from abc import ABC, abstractmethod
-import logging
 
-# Disable oneDNN/MKL-DNN and limit threads to avoid Windows CPU crashes
-os.environ['FLAGS_use_mkldnn'] = '0'
-os.environ['FLAGS_use_oneDNN'] = '0'
-os.environ['OMP_NUM_THREADS'] = '1'
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
+
 
 try:
     import cv2
@@ -165,21 +159,66 @@ class PaddleOCREngine(LocalOCREngine):
             return
         super().__init__()
         self._ocr = None
+        
+        # Check paddle compatibility before initializing
+        if not self._check_paddle_compatibility():
+            logger.error("PaddleOCR initialization skipped due to compatibility issues")
+            self._available = False
+            self._initialized = True
+            return
+        
         try:
-            # Set Paddle-related env vars again to be safe before import
-            os.environ.setdefault('FLAGS_use_oneDNN', '0')
-            os.environ.setdefault('FLAGS_use_mkldnn', '0')
-            # Force CPU-only operation
             from paddleocr import PaddleOCR
             # Use minimal parameters (use_gpu not supported in all versions)
-            self._ocr = PaddleOCR(use_angle_cls=True, lang='en')
+            self._ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
             self._available = True
+            logger.info("PaddleOCR initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize PaddleOCR: {e}")
             self._ocr = None
             self._available = False
         finally:
             self._initialized = True
+    
+    def _check_paddle_compatibility(self) -> bool:
+        """
+        Check if paddle and paddleocr are compatible versions.
+        
+        Returns:
+            True if compatible, False otherwise
+        """
+        try:
+            import paddle
+            import paddleocr
+            
+            paddle_version = paddle.__version__
+            paddleocr_version = paddleocr.__version__
+            
+            logger.info(f"Detected paddle {paddle_version}, paddleocr {paddleocr_version}")
+            
+            # Check if inference API exists
+            try:
+                from paddle.inference import Config
+                config = Config()
+                
+                # Check for the problematic method
+                if not hasattr(config, 'set_optimization_level'):
+                    logger.warning(
+                        "paddle.inference.Config missing 'set_optimization_level' method. "
+                        "This version incompatibility will cause PaddleOCR failures. "
+                        "Fix: pip install --force-reinstall paddlepaddle==2.6.2"
+                    )
+                    return False
+                
+            except Exception as e:
+                logger.warning(f"Could not verify paddle.inference API: {e}")
+                # Continue anyway, might work
+            
+            return True
+            
+        except ImportError as e:
+            logger.error(f"paddle or paddleocr not installed: {e}")
+            return False
 
     def is_available(self) -> bool:
         return bool(self._available)
@@ -260,7 +299,6 @@ class EasyOCREngine(LocalOCREngine):
         self._requested_gpu = bool(gpu)
         # Probe availability lazily but record failures
         try:
-            import easyocr  # type: ignore
             self._available = True
         except Exception as e:
             logger.debug(f"EasyOCR import failed: {e}")

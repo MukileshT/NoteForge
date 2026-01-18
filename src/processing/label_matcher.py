@@ -1,6 +1,5 @@
-from typing import Dict
 import re
-from core.note_session import NoteSession, DiagramRegion
+from core.note_session import NoteSession
 from utils.validators import extract_label_info
 from utils.geometry import BoundingBox, calculate_nearest_box
 from utils.logger import get_logger

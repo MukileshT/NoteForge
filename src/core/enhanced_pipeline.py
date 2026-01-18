@@ -1,8 +1,7 @@
 """Enhanced Processing Pipeline with All New Features"""
 from pathlib import Path
-from typing import List, Callable, Optional
+from typing import List, Callable
 from datetime import datetime
-import re
 
 from core.note_session import NoteSession, PageContent
 from core.config_manager import ConfigManager

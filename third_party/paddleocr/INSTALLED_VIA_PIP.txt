@@ -1,0 +1,3 @@
+PaddleOCR installed via pip.
+Do not place binaries here.
+Use: pip install paddleocr paddlepaddle
