@@ -1,7 +1,7 @@
 """PaddleOCR Path Resolver - Config-driven path management"""
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 
 def get_project_root() -> Path:
@@ -38,26 +38,61 @@ def resolve_paddleocr_path() -> Optional[Path]:
     return None
 
 
-def validate_paddleocr_installation(paddle_path: Path) -> bool:
+def check_pip_installation() -> Tuple[bool, Optional[str], Optional[str]]:
     """
-    Validate that PaddleOCR installation is complete.
+    Check if PaddleOCR is installed via pip and working.
+    
+    Returns:
+        (is_available, paddle_version, paddleocr_version)
+    """
+    paddle_ver = None
+    paddleocr_ver = None
+    
+    try:
+        import paddle
+        paddle_ver = paddle.__version__
+    except ImportError:
+        return False, None, None
+    except Exception:
+        return False, None, None
+    
+    try:
+        import paddleocr
+        paddleocr_ver = paddleocr.__version__
+    except ImportError:
+        return False, paddle_ver, None
+    except Exception:
+        return False, paddle_ver, None
+    
+    return True, paddle_ver, paddleocr_ver
+
+
+def validate_paddleocr_installation(paddle_path: Optional[Path] = None) -> bool:
+    """
+    Validate that PaddleOCR installation is complete and working.
     
     Args:
-        paddle_path: Path to PaddleOCR directory
+        paddle_path: Path to PaddleOCR directory (optional, for local installs)
         
     Returns:
         True if installation appears valid
     """
-    if not paddle_path.exists():
-        return False
+    # First check if pip installation works
+    is_available, paddle_ver, paddleocr_ver = check_pip_installation()
     
-    # Check for essential files/directories
-    # This is a basic check - adjust based on actual PaddleOCR structure
-    required_indicators = [
-        paddle_path / "paddleocr",  # Python package
-    ]
+    if is_available and paddle_ver and paddleocr_ver:
+        return True
     
-    return any(indicator.exists() for indicator in required_indicators)
+    # Check local path if provided
+    if paddle_path and paddle_path.exists():
+        # Check for marker file from setup script
+        setup_info = paddle_path / "SETUP_INFO.txt"
+        if setup_info.exists():
+            content = setup_info.read_text()
+            if "skipped" not in content.lower() and "failed" not in content.lower():
+                return True
+    
+    return False
 
 
 def get_setup_instructions() -> str:
@@ -69,8 +104,8 @@ Option 1 (Recommended):
     python scripts/setup_paddleocr.py
 
 Option 2 (Manual):
-    pip install paddleocr paddlepaddle
-    
-Option 3 (Custom Path):
-    Set PADDLEOCR_HOME environment variable to your installation path
+    pip install paddlepaddle==2.5.2 paddleocr==2.7.3
+
+Option 3 (Skip - use EasyOCR only):
+    The application will automatically use EasyOCR as fallback
 """

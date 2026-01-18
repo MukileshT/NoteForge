@@ -21,34 +21,38 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from ocr.paddle_resolver import (
     resolve_paddleocr_path,
     validate_paddleocr_installation,
+    check_pip_installation,
     get_setup_instructions
 )
 
 # Startup validation with fail-fast
 print("Checking dependencies...")
 
-# Set PADDLEOCR_HOME if resolved
-resolved_paddle_path = resolve_paddleocr_path()
-if resolved_paddle_path:
-    os.environ["PADDLEOCR_HOME"] = str(resolved_paddle_path)
-    if validate_paddleocr_installation(resolved_paddle_path):
-        print("✔ PaddleOCR found")
-    else:
-        print("✖ PaddleOCR installation incomplete")
-        print(get_setup_instructions())
-        # Allow to continue with EasyOCR fallback
+# Check if PaddleOCR is installed via pip
+is_pip_available, paddle_ver, paddleocr_ver = check_pip_installation()
+
+if is_pip_available:
+    print(f"[OK] PaddleOCR (pip): paddle={paddle_ver}, paddleocr={paddleocr_ver}")
 else:
-    print("⚠ PaddleOCR not configured (will use EasyOCR)")
-    print(get_setup_instructions())
-    # Allow to continue with fallback
+    # Try local path resolution
+    resolved_paddle_path = resolve_paddleocr_path()
+    if resolved_paddle_path:
+        os.environ["PADDLEOCR_HOME"] = str(resolved_paddle_path)
+        if validate_paddleocr_installation(resolved_paddle_path):
+            print("[OK] PaddleOCR (local)")
+        else:
+            print("[WARN] PaddleOCR incomplete - will use EasyOCR fallback")
+    else:
+        print("[INFO] PaddleOCR not installed - will use EasyOCR fallback")
+        print(get_setup_instructions())
 
 try:
     from gui.enhanced_main_window import main  # pyright: ignore[reportMissingImports]
 except ImportError as e:
-    print(f"✖ Import error: {e}")
+    print(f"[ERROR] Import error: {e}")
     raise
 except Exception as e:
-    print(f"✖ Error: {e}")
+    print(f"[ERROR] {e}")
     raise
 
 if __name__ == "__main__":

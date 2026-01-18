@@ -2,7 +2,8 @@ import json
 import base64
 from pathlib import Path
 from typing import Dict, Any, Optional
-from google import generativeai as genai
+from google import genai
+from google.genai import types as genai_types
 from groq import Groq
 from PIL import Image
 from openai import OpenAI # Keep this for OpenRouter
@@ -34,8 +35,8 @@ class AIClient:
             raise ValueError(f"{self.provider.capitalize()} API key not configured or is a placeholder in config.yaml")
 
         if self.provider == 'gemini':
-            genai.configure(api_key=self.api_key)
-            self.client = genai.GenerativeModel(self.model)
+            # Use the new google.genai SDK with Client object
+            self.client = genai.Client(api_key=self.api_key)
         elif self.provider == 'openrouter':
             self.client = OpenAI(api_key=self.api_key, base_url=self.config.get('openrouter_base_url'))
         elif self.provider == 'groq':
@@ -86,10 +87,10 @@ class AIClient:
                 )
                 return response.choices[0].message.content
             elif self.provider == 'gemini':
-                # PIL Image is required for Gemini's generate_content with image input
-                # Ensure it's imported at the top of the file
+                # Use new google.genai SDK - pass PIL Image directly
                 img = Image.open(image_path)
-                response = self.client.generate_content(
+                response = self.client.models.generate_content(
+                    model=self.model,
                     contents=[prompt, img]
                 )
                 return response.text
@@ -104,7 +105,9 @@ class AIClient:
                 )
                 return response.choices[0].message.content
             elif self.provider == 'gemini':
-                response = self.client.generate_content(
+                # Use new google.genai SDK
+                response = self.client.models.generate_content(
+                    model=self.model,
                     contents=[prompt]
                 )
                 return response.text
