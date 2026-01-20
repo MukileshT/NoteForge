@@ -6,16 +6,32 @@ from dotenv import load_dotenv
 # Set UTF-8 encoding for Windows console
 if sys.platform == 'win32':
     try:
-        sys.stdout.reconfigure(encoding='utf-8')
-    except AttributeError:
-        import codecs
-        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+        if sys.stdout is not None:
+            sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, TypeError):
+        try:
+            import codecs
+            if sys.stdout is not None and hasattr(sys.stdout, 'buffer'):
+                sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+        except Exception:
+            pass  # Continue without UTF-8 reconfiguration
 
 # Load environment variables from .env if present
 load_dotenv(override=True)
 
 # Add the 'src' directory to the Python path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+try:
+    # Try using __file__ first (works in normal execution)
+    src_path = Path(__file__).parent / "src"
+except (NameError, TypeError):
+    # Fallback for PyInstaller bundled executable
+    src_path = Path(sys.executable).parent / "src"
+
+# If src doesn't exist in expected location, try current working directory
+if not src_path.exists():
+    src_path = Path.cwd() / "src"
+
+sys.path.insert(0, str(src_path))
 
 # Import path resolver after sys.path setup
 from ocr.paddle_resolver import (
