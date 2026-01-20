@@ -5,7 +5,7 @@
     "easyocr_gpu": true
   },
   "models": {
-    "selected": "gemini-2.5-flash",
+    "selected": "gemini-2.0-flash-exp",
     "available": [
       {
         "name": "gemini-2.0-flash-exp",

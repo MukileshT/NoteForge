@@ -40,29 +40,47 @@ def resolve_paddleocr_path() -> Optional[Path]:
 
 def check_pip_installation() -> Tuple[bool, Optional[str], Optional[str]]:
     """
-    Check if PaddleOCR is installed via pip and working.
+    Check if PaddleOCR is installed via pip WITHOUT fully importing it.
+    
+    This avoids initializing PaddleX (PDX) at startup, which would prevent
+    later initialization by PaddleOCREngine.
     
     Returns:
         (is_available, paddle_version, paddleocr_version)
     """
+    import importlib.util
+    
     paddle_ver = None
     paddleocr_ver = None
     
-    try:
-        import paddle
-        paddle_ver = paddle.__version__
-    except ImportError:
-        return False, None, None
-    except Exception:
+    # Check if paddle module exists without importing
+    paddle_spec = importlib.util.find_spec("paddle")
+    if paddle_spec is None:
         return False, None, None
     
+    # Get paddle version from metadata (avoids full import)
     try:
-        import paddleocr
-        paddleocr_ver = paddleocr.__version__
-    except ImportError:
-        return False, paddle_ver, None
+        from importlib.metadata import version
+        paddle_ver = version("paddlepaddle")
     except Exception:
+        # Fallback: try paddlepaddle-gpu
+        try:
+            from importlib.metadata import version
+            paddle_ver = version("paddlepaddle-gpu")
+        except Exception:
+            paddle_ver = "installed"
+    
+    # Check if paddleocr module exists without importing
+    paddleocr_spec = importlib.util.find_spec("paddleocr")
+    if paddleocr_spec is None:
         return False, paddle_ver, None
+    
+    # Get paddleocr version from metadata (avoids full import)
+    try:
+        from importlib.metadata import version
+        paddleocr_ver = version("paddleocr")
+    except Exception:
+        paddleocr_ver = "installed"
     
     return True, paddle_ver, paddleocr_ver
 

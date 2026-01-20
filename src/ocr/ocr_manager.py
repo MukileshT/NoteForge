@@ -124,7 +124,7 @@ class OCRManager:
             return self._extract_text_ai(image_path)
 
         # No AI fallback -> fail fast
-        raise RuntimeError("All local OCR engines failed and AI fallback is disabled")
+        raise RuntimeError("All local OCR engines failed and AI OCR fallback is disabled.")
     
     def _extract_text_ai(self, image_path: Path) -> Dict:
         """Extract text using AI vision models"""

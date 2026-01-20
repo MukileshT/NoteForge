@@ -2,6 +2,7 @@
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from abc import ABC, abstractmethod
+import threading
 
 
 
@@ -145,31 +146,35 @@ class TesseractEngine(LocalOCREngine):
 class PaddleOCREngine(LocalOCREngine):
     """PaddleOCR for handwritten text"""
     _instance = None
+    _lock = threading.Lock()  # Thread-safe singleton lock
     _initialized = False
     _available = False
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            with cls._lock:  # Ensure thread-safe initialization
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self):
         # Ensure we initialize PaddleOCR only once per process
         if self._initialized:
+            logger.warning("PaddleOCREngine is already initialized. Skipping reinitialization.")
             return
         super().__init__()
         self._ocr = None
-        
+
         # Check paddle compatibility before initializing
         if not self._check_paddle_compatibility():
             logger.error("PaddleOCR initialization skipped due to compatibility issues")
             self._available = False
             self._initialized = True
             return
-        
+
         try:
             from paddleocr import PaddleOCR
-            # Use minimal parameters (use_gpu not supported in all versions)
+            # PaddleOCR 2.x API (stable)
             self._ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
             self._available = True
             logger.info("PaddleOCR initialized successfully")
@@ -184,6 +189,9 @@ class PaddleOCREngine(LocalOCREngine):
         """
         Check if paddle and paddleocr are compatible versions.
         
+        NOTE: We avoid importing paddleocr here to prevent PDX initialization.
+        The actual import happens in __init__ when we create the PaddleOCR instance.
+        
         Returns:
             True if compatible, False otherwise
         """
@@ -192,33 +200,21 @@ class PaddleOCREngine(LocalOCREngine):
             paddle_version = paddle.__version__
             logger.info(f"Detected paddle {paddle_version}")
             
-            # Check if inference API exists
-            try:
-                from paddle.inference import Config
-                config = Config()
-                
-                # Check for the problematic method
-                if not hasattr(config, 'set_optimization_level'):
-                    logger.warning(
-                        "paddle.inference.Config missing 'set_optimization_level' method. "
-                        "This version incompatibility will cause PaddleOCR failures. "
-                        "Fix: pip install --force-reinstall paddlepaddle==2.6.2"
-                    )
-                    return False
-                
-            except Exception as e:
-                logger.warning(f"Could not verify paddle.inference API: {e}")
-                # Continue anyway, might work
-            
-            # Now check paddleocr (may fail due to DLL issues)
-            try:
-                import paddleocr
-                paddleocr_version = paddleocr.__version__
-                logger.info(f"Detected paddleocr {paddleocr_version}")
-            except Exception as e:
-                logger.error(f"paddleocr import failed: {e}")
+            # Check paddleocr exists without importing (avoids PDX init)
+            import importlib.util
+            paddleocr_spec = importlib.util.find_spec("paddleocr")
+            if paddleocr_spec is None:
+                logger.error("paddleocr module not found")
                 logger.info("PaddleOCR unavailable, will use EasyOCR fallback")
                 return False
+            
+            # Get version from metadata without importing
+            try:
+                from importlib.metadata import version
+                paddleocr_version = version("paddleocr")
+                logger.info(f"Detected paddleocr {paddleocr_version}")
+            except Exception:
+                logger.info("paddleocr found (version unknown)")
             
             return True
             
