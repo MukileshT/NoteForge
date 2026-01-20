@@ -1,67 +1,115 @@
 # Obsidian Notes Converter
 
-Convert handwritten notes (PDF/images) to Obsidian Markdown with AI-powered OCR.
+Convert PDFs and images to Obsidian markdown notes with OCR and AI assistance.
 
-## Quick Setup
+## 🚀 Quick Start
 
+### Download Pre-built Executable
+1. Download `ObsidianNotesConverter.exe` from [Releases](../../releases)
+2. Double-click to run
+3. Start converting your notes!
+
+### Or Run from Source
 ```bash
-# 1. Create virtual environment
+# 1. Clone the repository
+git clone <repository-url>
+cd obsidian_notes_converter
+
+# 2. Create virtual environment
 python -m venv .venv
 .venv\Scripts\activate  # Windows
-source .venv/bin/activate  # Linux/Mac
 
-# 2. Install dependencies
+# 3. Install dependencies
 pip install -r requirements.txt
-
-# 3. Set up PaddleOCR (for local OCR)
-python scripts/setup_paddleocr.py
 
 # 4. Run the application
 python main.py
 ```
 
-## Configuration
+## ✨ Features
 
-### Application Settings
-This project uses `config/app_config.json` as the single source of truth:
+- 📄 **PDF & Image Processing** - Convert PDFs and images to markdown
+- 🔍 **Local OCR** - PaddleOCR and EasyOCR (no API required)
+- 🤖 **AI-Powered OCR** - GPT-4, Claude, Gemini vision models
+- 📊 **Diagram Detection** - Automatically detect and extract diagrams
+- 🔗 **Smart Cross-Referencing** - Link related content automatically
+- 📝 **Obsidian Integration** - Direct vault writing with proper formatting
+- 💾 **No Cloud Required** - Works completely offline with local OCR
 
-- **Models**: `models.selected` and `models.available` control which LLM is used
-- **Image settings**: `image.max_width` and `image.quality` control resizing/compression
-- **OCR**: `ocr.mode` and `ocr.confidence_threshold` control OCR behavior
+## 📋 Requirements
 
-### API Keys
-API keys are stored encrypted under `%APPDATA%/YourApp/keys.enc` (Windows).
-Use "Manage API Keys" in the GUI to add keys.
+- **OS**: Windows 10/11 (64-bit)
+- **RAM**: 4GB minimum (8GB recommended)
+- **Disk**: 2GB free space
+- **Python**: 3.10+ (only for source installation)
 
-### Environment Variables (Optional)
-Copy `.env.example` to `.env` and customize:
+## 🔧 Configuration
+
+### OCR Modes
+- **Local OCR** (Default) - Free, no API keys needed
+  - PaddleOCR for handwritten text
+  - EasyOCR for printed text
+- **AI OCR** - Requires API key, better accuracy
+  - Supports: OpenAI, Anthropic, Gemini, Groq
+
+### API Keys (Optional)
+Configure through the Settings menu:
+- Gemini: https://makersuite.google.com/app/apikey
+- OpenAI: https://platform.openai.com/api-keys
+- Anthropic: https://console.anthropic.com/
+- Groq: https://console.groq.com/
+
+## 📖 Documentation
+
+- [Installation Guide](INSTALL.md) - Detailed setup instructions
+- [Configuration](config/README.md) - Advanced configuration options
+
+## 🛠️ Building Executable
+
+To build your own executable:
 
 ```bash
-# Custom PaddleOCR installation path (optional)
-PADDLEOCR_HOME=
+# Activate virtual environment
+.venv\Scripts\activate
 
-# OCR mode: local, ai, or disabled
-OCR_MODE=local
+# Run build script
+build.bat
+
+# Or manually:
+pip install pyinstaller
+pyinstaller build_exe.spec
 ```
 
-## OCR Modes
+Executable will be in `dist\ObsidianNotesConverter.exe`
 
-- **local**: Uses PaddleOCR (handwritten) or EasyOCR (printed) - no API calls
-- **ai**: Uses AI vision models (OpenAI, Anthropic, Gemini)
-- **disabled**: Skip OCR entirely
+## 🐛 Troubleshooting
 
-The application automatically falls back to EasyOCR if PaddleOCR is unavailable.
+### Common Issues
 
-## Troubleshooting
+**PaddleOCR not working**
+- Install Visual C++ Redistributable: https://aka.ms/vs/17/release/vc_redist.x64.exe
+- Use EasyOCR or AI OCR instead
 
-### PaddleOCR Issues
-If you see `'AnalysisConfig' object has no attribute 'set_optimization_level'`:
+**Out of memory**
+- Process fewer pages at once
+- Close other applications
+- Use AI OCR mode (lower memory)
 
-```bash
-pip install --force-reinstall paddlepaddle==2.6.2
-```
+**API errors**
+- Verify API key is correct
+- Check quota/credits
+- Ensure internet connection
 
-Or let the application use EasyOCR as fallback (automatic).
+See [INSTALL.md](INSTALL.md) for more troubleshooting help.
 
-### Custom Models
-To add a custom LLM: open the GUI, choose a provider, select "Other / Custom" in the Model dropdown, enter the model name and type, then click "Save Custom".
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
+
+## ⭐ Support
+
+If this project helps you, please consider giving it a star!

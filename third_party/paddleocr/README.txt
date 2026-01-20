@@ -1,1 +1,0 @@
-PaddleOCR placeholder. Replace with actual files.
