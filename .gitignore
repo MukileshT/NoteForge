@@ -81,8 +81,13 @@ third_party/
 
 # Build artifacts
 *.spec.backup
+build_log.txt
+build_exe_fixed.spec
 
- *.pdf
- *.png
- *.jpg
+# Local scratch folders
+del/
+
+*.pdf
+*.png
+*.jpg
 RELEASE_CHECKLIST.md
