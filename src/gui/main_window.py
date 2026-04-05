@@ -9,7 +9,7 @@ from gui.progress_tracker import ProgressWindow
 
 def main():
     root = tk.Tk()
-    root.title("Obsidian Notes Converter")
+    root.title("NoteForge")
     root.geometry("600x400")
     
     config = ConfigManager()
@@ -52,7 +52,7 @@ def main():
             progress_win.close()
             messagebox.showerror("Error", str(e))
     
-    tk.Label(root, text="Obsidian Notes Converter", font=("Arial", 16, "bold")).pack(pady=20)
+    tk.Label(root, text="NoteForge", font=("Arial", 16, "bold")).pack(pady=20)
     tk.Button(root, text="Select PDF/Images", command=select_files, width=20).pack(pady=10)
     file_label = tk.Label(root, text="No files selected")
     file_label.pack()

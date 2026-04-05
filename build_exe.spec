@@ -53,7 +53,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='ObsidianNotesConverter',
+    name='NoteForge',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

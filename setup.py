@@ -1,11 +1,11 @@
-"""Setup script for Obsidian Notes Converter"""
+"""Setup script for NoteForge"""
 from setuptools import setup, find_packages
 
 setup(
-    name="obsidian-notes-converter",
+    name="noteforge",
     version="2.0.0",
-    description="Convert PDFs and images to Obsidian notes with OCR and AI",
-    author="Obsidian Converter Team",
+    description="Convert PDFs and images into Markdown notes with OCR and AI",
+    author="Mukilesh T",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=[

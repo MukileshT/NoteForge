@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo Obsidian Notes Converter - Build Script
+echo NoteForge - Build Script
 echo ========================================
 echo.
 
@@ -34,7 +34,7 @@ if %ERRORLEVEL% EQU 0 (
     echo ========================================
     echo Build complete!
     echo ========================================
-    echo Executable location: dist\ObsidianNotesConverter.exe
+    echo Executable location: dist\NoteForge.exe
     echo.
 ) else (
     echo.

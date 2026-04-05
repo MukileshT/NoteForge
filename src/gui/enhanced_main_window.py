@@ -42,7 +42,7 @@ class EnhancedMainWindow:
     
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("Obsidian Notes Converter - Enhanced")
+        self.root.title("NoteForge - Enhanced")
         self.root.geometry("800x700")
         
         self.config = ConfigManager()
@@ -68,7 +68,7 @@ class EnhancedMainWindow:
         # Title
         title_frame = tk.Frame(self.root)
         title_frame.pack(pady=10)
-        tk.Label(title_frame, text="Obsidian Notes Converter", 
+        tk.Label(title_frame, text="NoteForge", 
                 font=("Arial", 18, "bold")).pack()
         tk.Label(title_frame, text="Enhanced Edition", 
                 font=("Arial", 10)).pack()
